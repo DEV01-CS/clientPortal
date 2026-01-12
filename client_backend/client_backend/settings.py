@@ -15,12 +15,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-d7l_^76&o%zeovo^v-is!w+9a)f)w^5fmew_41!1i$#-n9^^+%'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-d7l_^76&o%zeovo^v-is!w+9a)f)w^5fmew_41!1i$#-n9^^+%')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+#ALLOWED_HOSTS for deployment
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else ['*']
 
 
 # Application definition
@@ -53,7 +54,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-]
+] + (os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if os.getenv('CORS_ALLOWED_ORIGINS') else [])
+
 
 # Allow credentials (cookies, authorization headers, etc.)
 CORS_ALLOW_CREDENTIALS = True
@@ -91,14 +93,26 @@ WSGI_APPLICATION = 'client_backend.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# https://docs.djangoproject.com/en/4.2/ref/settings/#
+# Use PostgreSQL if DATABASE_URL is set (Railway provides this automatically)
+# Otherwise, use SQLite for local development
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv('DATABASE_URL'):
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -160,7 +174,7 @@ SIMPLE_JWT = {
 }
 
 
-GOOGLE_SHEET_ID = '16KsD6zG9YtOXnrVXg0oRAdie5KBNUfxcbvrTBMFTEd0'
+
 GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID', '16KsD6zG9YtOXnrVXg0oRAdie5KBNUfxcbvrTBMFTEd0')
 
 # Google OAuth 2.0 Settings
