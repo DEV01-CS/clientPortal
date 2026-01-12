@@ -1,5 +1,4 @@
 asgiref==3.8.1
-backports.zoneinfo==0.2.1
 cachetools==5.5.2
 certifi==2025.11.12
 charset-normalizer==3.4.4
@@ -24,3 +23,12 @@ typing-extensions==4.13.2
 uritemplate==4.1.1
 urllib3==2.2.3
 google-auth-oauthlib==1.2.1
+
+
+#for deployment
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
+python-dotenv==1.0.1
+django-cors-headers==4.3.1
+djangorestframework-simplejwt==5.3.1
