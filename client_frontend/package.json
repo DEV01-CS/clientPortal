@@ -23,7 +23,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "preinstall": "npm config set registry https://registry.npmjs.org/ || true"
+    "ci": "npm config set registry https://registry.npmjs.org/ && npm ci --registry=https://registry.npmjs.org/"
   },
   "eslintConfig": {
     "extends": [
