@@ -7,7 +7,7 @@
 /coverage
 
 # Production
-/build
+# /build - Commented out to allow prebuilt frontend deployment
 /dist
 
 # Environment variables
