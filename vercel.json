@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "cd client_frontend && rm -f ~/.npmrc /root/.npmrc /vercel/.npmrc 2>/dev/null || true && npm config delete _auth 2>/dev/null || true && npm config delete _authToken 2>/dev/null || true && npm config set registry https://registry.npmjs.org/ && npm install --registry=https://registry.npmjs.org/ && npm run build",
+  "installCommand": "cd client_frontend && rm -f ~/.npmrc /root/.npmrc /vercel/.npmrc 2>/dev/null || true && npm config delete _auth 2>/dev/null || true && npm config delete _authToken 2>/dev/null || true && npm config set registry https://registry.npmjs.org/ && npm install --registry=https://registry.npmjs.org/",
+  "buildCommand": "cd client_frontend && npm run build",
   "outputDirectory": "client_frontend/build",
   "framework": null,
   "rewrites": [
