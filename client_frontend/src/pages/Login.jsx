@@ -122,8 +122,15 @@ const Login = () => {
 
       // Check for connection errors first
       if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED' || 
-          error.message?.includes('Network Error') || error.message?.includes('Connection refused')) {
-        errorMessage = "Cannot connect to server. Please make sure the backend server is running on http://127.0.0.1:8000";
+          error.message?.includes('Network Error') || error.message?.includes('Connection refused') ||
+          error.message?.includes('Failed to fetch')) {
+        // Get the actual API base URL being used
+        const apiUrl = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
+        if (apiUrl.includes('127.0.0.1') || apiUrl.includes('localhost')) {
+          errorMessage = "Configuration Error: Frontend is trying to connect to localhost. Please set REACT_APP_API_BASE_URL environment variable in Vercel to your Railway backend URL (e.g., https://backend-production-5fef.up.railway.app)";
+        } else {
+          errorMessage = `Cannot connect to server at ${apiUrl}. Please check if the backend is running or try again later.`;
+        }
       } else if (error.response?.data) {
         const errorData = error.response.data;
 

@@ -2,6 +2,16 @@ import axios from "axios";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000";
 
+// Log API URL in development to help debug
+if (process.env.NODE_ENV === 'development') {
+  console.log('API Base URL:', API_BASE_URL);
+}
+
+// Warn if using localhost in production
+if (process.env.NODE_ENV === 'production' && (API_BASE_URL.includes('127.0.0.1') || API_BASE_URL.includes('localhost'))) {
+  console.error('⚠️ WARNING: Using localhost API URL in production! Set REACT_APP_API_BASE_URL in Vercel environment variables.');
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // important if using sessions
@@ -85,12 +95,28 @@ api.interceptors.response.use(
       }
 
       try {
-        // Try to refresh the token
-        const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
+        // Try to refresh the token - use axios directly to avoid interceptor loop
+        // Create a new axios instance without interceptors for token refresh
+        const refreshAxios = axios.create({
+          baseURL: API_BASE_URL,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const response = await refreshAxios.post('/api/accounts/token/refresh/', {
           refresh: refreshToken
         });
 
-        const { access } = response.data;
+        // Handle different response formats
+        const access = response.data?.access || response.data?.access_token;
+        if (!access) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Token refresh response:', response.data);
+          }
+          throw new Error('No access token in refresh response');
+        }
+        
         localStorage.setItem("token", access);
         originalRequest.headers.Authorization = `Bearer ${access}`;
         
@@ -100,6 +126,9 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, logout user
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Token refresh failed:', refreshError.response?.data || refreshError.message);
+        }
         processQueue(refreshError, null);
         isRefreshing = false;
         localStorage.removeItem("token");
@@ -112,6 +141,16 @@ api.interceptors.response.use(
         }
         return Promise.reject(refreshError);
       }
+    }
+
+    // Log 400 errors in development for debugging
+    if (error.response?.status === 400 && process.env.NODE_ENV === 'development') {
+      console.error('400 Bad Request:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.response?.data,
+        requestData: error.config?.data
+      });
     }
 
     return Promise.reject(error);
