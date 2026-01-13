@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "buildCommand": "cd client_frontend && npm install && npm run build",
+  "outputDirectory": "client_frontend/build",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+
