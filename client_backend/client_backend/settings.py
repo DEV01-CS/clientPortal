@@ -200,10 +200,20 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv('GOOGLE_OAUTH_REDIRECT_URI', 'http://local
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 # Security settings for production
+# Railway handles SSL termination, so we need to trust the proxy
 if not DEBUG:
-    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    # Disable SSL redirect - Railway handles SSL at the proxy level
+    # Setting this to True causes redirect loops when Railway proxies requests
+    SECURE_SSL_REDIRECT = False
+    
+    # Trust Railway's proxy for SSL (Railway sets X-Forwarded-Proto header)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Secure cookies (only works with HTTPS, which Railway provides)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    
+    # Other security headers
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
