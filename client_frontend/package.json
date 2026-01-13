@@ -19,6 +19,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "preinstall": "npm config set registry https://registry.npmjs.org/",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
