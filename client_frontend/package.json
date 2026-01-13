@@ -19,7 +19,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "preinstall": "npm config set registry https://registry.npmjs.org/",
+    "preinstall": "npm config delete _auth 2>/dev/null || true && npm config delete _authToken 2>/dev/null || true && npm config delete always-auth 2>/dev/null || true && npm config set registry https://registry.npmjs.org/ && npm config set //registry.npmjs.org/:_authToken '' 2>/dev/null || true",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
