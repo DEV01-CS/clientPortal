@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd client_frontend && npm install && npm run build",
+  "buildCommand": "cd client_frontend && npm config set registry https://registry.npmjs.org/ && npm install && npm run build",
   "outputDirectory": "client_frontend/build",
   "framework": null,
   "rewrites": [
