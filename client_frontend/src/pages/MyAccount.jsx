@@ -36,8 +36,8 @@ const MyAccount = () => {
         const success = urlParams.get('success');
         const error = urlParams.get('error');
         
-        // Debug logging
-        if (success || error) {
+        // Debug logging (only in development)
+        if ((success || error) && process.env.NODE_ENV === 'development') {
             console.log('OAuth callback detected:', { success, error, fullURL: window.location.href });
         }
         
@@ -84,7 +84,9 @@ const MyAccount = () => {
                 tax_id: data.tax_id || '',
             });
         } catch (error) {
-            console.error('Error fetching profile:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error fetching profile:', error);
+            }
             // If profile doesn't exist, use auth user data
             setProfileData({
                 first_name: '',
@@ -106,16 +108,20 @@ const MyAccount = () => {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
-                console.warn('No authentication token found. User needs to login first.');
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn('No authentication token found. User needs to login first.');
+                }
                 return;
             }
             
             const status = await checkGoogleOAuthStatus();
             setOauthStatus(status);
         } catch (error) {
-            console.error('Error checking OAuth status:', error);
-            if (error.response?.status === 401) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error checking OAuth status:', error);
+              if (error.response?.status === 401) {
                 console.warn('Authentication required. Please login first.');
+              }
             }
         }
     };
@@ -139,7 +145,9 @@ const MyAccount = () => {
                 throw new Error('No authorization URL received');
             }
         } catch (error) {
-            console.error('Error initiating OAuth:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error initiating OAuth:', error);
+            }
             
             let errorMessage = 'Failed to initiate Google connection. Please try again.';
             
@@ -185,7 +193,9 @@ const MyAccount = () => {
                 }));
             }
         } catch (error) {
-            console.error('Error saving profile:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error saving profile:', error);
+            }
             let errorMessage = 'Failed to save profile. Please try again.';
             
             if (error.response?.data) {

@@ -86,7 +86,9 @@ const Dashboard = () => {
           });
         }
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error fetching dashboard data:", error);
+        }
         // Keep default values on error
       } finally {
         setIsLoadingData(false);
@@ -129,9 +131,11 @@ const Dashboard = () => {
         ]);
       }
     } catch (error) {
-      console.error("Chatbot error:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Chatbot error:", error);
+        console.error("Error response:", error.response?.data);
+        console.error("Error status:", error.response?.status);
+      }
       
       // Show more specific error message
       let errorMessage = "Sorry, I'm having trouble connecting. Please try again later.";

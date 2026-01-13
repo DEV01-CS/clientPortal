@@ -12,13 +12,15 @@ export const sendChatbotMessage = async (message) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Chatbot API error:", error);
-    console.error("Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Chatbot API error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers,
+      });
+    }
     throw error;
   }
 };

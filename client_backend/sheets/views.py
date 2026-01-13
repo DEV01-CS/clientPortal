@@ -20,7 +20,10 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.utils import timezone
 from googleapiclient.errors import HttpError
+import logging
 import traceback
+
+logger = logging.getLogger(__name__)
 
 
 # OAuth Endpoints
@@ -91,10 +94,12 @@ def oauth_callback(request):
         if not user_id and state in oauth_state_store:
             state_data = oauth_state_store.pop(state)  # Remove after use
             user_id = state_data.get('user_id')
-            print(f"Retrieved user_id from in-memory store: {user_id}")
+            if settings.DEBUG:
+                logger.debug(f"Retrieved user_id from in-memory store: {user_id}")
         
         if not user_id:
-            print(f"OAuth callback - No user_id found. State: {state}, Session keys: {list(request.session.keys())}")
+            if settings.DEBUG:
+                logger.warning(f"OAuth callback - No user_id found. State: {state}, Session keys: {list(request.session.keys())}")
             return redirect(f"{frontend_url}/my-account?error=session_expired")
         
         # Get user object
@@ -107,11 +112,9 @@ def oauth_callback(request):
         # Exchange code for tokens
         try:
             token_obj = exchange_code_for_tokens(user, code)
-            print(f"OAuth tokens saved successfully for user: {user.email}")
+            logger.info(f"OAuth tokens saved successfully for user: {user.email}")
         except Exception as e:
-            import traceback
-            print(f"Error exchanging code for tokens: {str(e)}")
-            print(traceback.format_exc())
+            logger.error(f"Error exchanging code for tokens: {str(e)}", exc_info=True)
             return redirect(f"{frontend_url}/my-account?error=token_exchange_failed")
         
         # Clear session data
@@ -124,11 +127,9 @@ def oauth_callback(request):
         return redirect(f"{frontend_url}/my-account?success=connected")
     except Exception as e:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        import traceback
         error_msg = str(e)
-        print(f"OAuth callback error: {error_msg}")
-        print(traceback.format_exc())
-        return redirect(f"{frontend_url}/my-account?error={error_msg}")
+        logger.error(f"OAuth callback error: {error_msg}", exc_info=True)
+        return redirect(f"{frontend_url}/my-account?error=oauth_error")
 
 
 @api_view(['GET'])
@@ -500,12 +501,15 @@ def test_client_data(request, client_id=None):
                 debug_info["ltp_sheet_errors"].append(f"Debug scan failed: {str(e)}")
         
         if not data:
-            return Response({
+            response_data = {
                 "error": "Data not found",
                 "tried_identifier": test_client_id or test_email or request.user.email,
-                "debug_info": debug_info,
-                "message": f"No data found for {'email: ' + (test_email or request.user.email) if test_email or not test_client_id else 'client_id: ' + str(test_client_id)} in Input or LTP sheets. Check debug_info for details."
-            }, status=status.HTTP_404_NOT_FOUND)
+                "message": f"No data found for {'email: ' + (test_email or request.user.email) if test_email or not test_client_id else 'client_id: ' + str(test_client_id)} in Input or LTP sheets."
+            }
+            # Only include debug info in development
+            if settings.DEBUG:
+                response_data["debug_info"] = debug_info
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
         
         # Remove internal row number from response
         if '_row_number' in data:

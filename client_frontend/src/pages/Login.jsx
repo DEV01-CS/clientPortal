@@ -109,10 +109,13 @@ const Login = () => {
         navigate("/dashboard", { replace: true });
       }
     } catch (error) {
-      console.error("Authentication error:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error message:", error.message);
-      console.error("Error code:", error.code);
+      // Only log errors in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Authentication error:", error);
+        console.error("Error response:", error.response?.data);
+        console.error("Error message:", error.message);
+        console.error("Error code:", error.code);
+      }
 
       // Better error message handling
       let errorMessage = "Authentication failed. Please try again.";

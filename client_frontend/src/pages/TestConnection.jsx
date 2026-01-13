@@ -17,7 +17,9 @@ const TestConnection = () => {
       const result = await testGoogleSheetsConnection();
       setSheetsStatus({ success: true, data: result });
     } catch (error) {
-      console.error('Sheets connection error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Sheets connection error:', error);
+      }
       let errorMessage = error.message || 'Unknown error';
       
       // Better error handling
@@ -42,7 +44,9 @@ const TestConnection = () => {
       const result = await testGoogleDriveConnection();
       setDriveStatus({ success: true, data: result });
     } catch (error) {
-      console.error('Drive connection error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Drive connection error:', error);
+      }
       let errorMessage = error.message || 'Unknown error';
       
       // Better error handling
