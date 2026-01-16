@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   PieChart,
   Pie,
@@ -18,30 +18,94 @@ import {
 const MyTrends = () => {
   const [selectedYear, setSelectedYear] = useState("2025");
 
-  // Budget data for pie chart
-  const budgetData = [
-    { name: "Staff", value: 100000, color: "#14B8A6" },
-    { name: "Contracts & Maintenance", value: 80000, color: "#5EEAD4" },
-    { name: "Utilities", value: 60000, color: "#99F6E4" },
-    { name: "Other", value: 130000, color: "#E5E7EB" },
-  ];
+  // Year-specific budget data
+  const yearData = {
+    "2023": {
+      pieData: [
+        { name: "Staff", value: 90000, color: "#14B8A6" },
+        { name: "Contracts & Maintenance", value: 75000, color: "#5EEAD4" },
+        { name: "Utilities", value: 55000, color: "#99F6E4" },
+        { name: "Other", value: 120000, color: "#E5E7EB" },
+      ],
+      tableData: [
+        { category: "Staff", budget: 18000, actual: 20000 },
+        { category: "Contracts & Maintenance", budget: 75000, actual: 72000 },
+        { category: "Utilities", budget: 55000, actual: 58000 },
+        { category: "Insurance", budget: 28000, actual: 29000 },
+        { category: "Professional Fees", budget: 35000, actual: 33000 },
+        { category: "Compliance", budget: 45000, actual: 48000 },
+        { category: "Reserve Fund", budget: 95000, actual: 100000 },
+      ],
+    },
+    "2024": {
+      pieData: [
+        { name: "Staff", value: 95000, color: "#14B8A6" },
+        { name: "Contracts & Maintenance", value: 78000, color: "#5EEAD4" },
+        { name: "Utilities", value: 58000, color: "#99F6E4" },
+        { name: "Other", value: 125000, color: "#E5E7EB" },
+      ],
+      tableData: [
+        { category: "Staff", budget: 19000, actual: 22000 },
+        { category: "Contracts & Maintenance", budget: 78000, actual: 76000 },
+        { category: "Utilities", budget: 58000, actual: 60000 },
+        { category: "Insurance", budget: 29000, actual: 30000 },
+        { category: "Professional Fees", budget: 37000, actual: 36000 },
+        { category: "Compliance", budget: 48000, actual: 50000 },
+        { category: "Reserve Fund", budget: 98000, actual: 105000 },
+      ],
+    },
+    "2025": {
+      pieData: [
+        { name: "Staff", value: 100000, color: "#14B8A6" },
+        { name: "Contracts & Maintenance", value: 80000, color: "#5EEAD4" },
+        { name: "Utilities", value: 60000, color: "#99F6E4" },
+        { name: "Other", value: 130000, color: "#E5E7EB" },
+      ],
+      tableData: [
+        { category: "Staff", budget: 20000, actual: 25000 },
+        { category: "Contracts & Maintenance", budget: 80000, actual: 75000 },
+        { category: "Utilities", budget: 60000, actual: 65000 },
+        { category: "Insurance", budget: 30000, actual: 32000 },
+        { category: "Professional Fees", budget: 40000, actual: 38000 },
+        { category: "Compliance", budget: 50000, actual: 55000 },
+        { category: "Reserve Fund", budget: 100000, actual: 110000 },
+      ],
+    },
+    "2026": {
+      pieData: [
+        { name: "Staff", value: 105000, color: "#14B8A6" },
+        { name: "Contracts & Maintenance", value: 82000, color: "#5EEAD4" },
+        { name: "Utilities", value: 62000, color: "#99F6E4" },
+        { name: "Other", value: 135000, color: "#E5E7EB" },
+      ],
+      tableData: [
+        { category: "Staff", budget: 22000, actual: 24000 },
+        { category: "Contracts & Maintenance", budget: 82000, actual: 80000 },
+        { category: "Utilities", budget: 62000, actual: 64000 },
+        { category: "Insurance", budget: 32000, actual: 33000 },
+        { category: "Professional Fees", budget: 42000, actual: 40000 },
+        { category: "Compliance", budget: 52000, actual: 56000 },
+        { category: "Reserve Fund", budget: 105000, actual: 112000 },
+      ],
+    },
+  };
 
-  // Budget vs Actual table data
-  const budgetTableData = [
-    { category: "Staff", budget: 20000, actual: 25000 },
-    { category: "Contracts & Maintenance", budget: 80000, actual: 75000 },
-    { category: "Utilities", budget: 60000, actual: 65000 },
-    { category: "Insurance", budget: 30000, actual: 32000 },
-    { category: "Professional Fees", budget: 40000, actual: 38000 },
-    { category: "Compliance", budget: 50000, actual: 55000 },
-    { category: "Reserve Fund", budget: 100000, actual: 110000 },
-  ];
+  // Get current year's data
+  const currentYearData = yearData[selectedYear] || yearData["2025"];
 
-  // Calculate variance for bar chart
-  const varianceData = budgetTableData.map((item) => ({
-    category: item.category,
-    variance: ((item.actual - item.budget) / item.budget) * 100,
-  }));
+  // Budget data for pie chart (year-specific)
+  const budgetData = currentYearData.pieData;
+
+  // Budget vs Actual table data (year-specific)
+  const budgetTableData = currentYearData.tableData;
+
+  // Calculate variance for bar chart (year-specific)
+  const varianceData = useMemo(() => {
+    return budgetTableData.map((item) => ({
+      category: item.category,
+      variance: ((item.actual - item.budget) / item.budget) * 100,
+    }));
+  }, [budgetTableData]);
 
   // Past budget trends data
   const trendsData = [
@@ -62,8 +126,14 @@ const MyTrends = () => {
     { category: "Reserve Fund", value: 6 },
   ];
 
-  const totalBudget = budgetTableData.reduce((sum, item) => sum + item.budget, 0);
-  const totalActual = budgetTableData.reduce((sum, item) => sum + item.actual, 0);
+  // Calculate totals (year-specific)
+  const totalBudget = useMemo(() => {
+    return budgetTableData.reduce((sum, item) => sum + item.budget, 0);
+  }, [budgetTableData]);
+
+  const totalActual = useMemo(() => {
+    return budgetTableData.reduce((sum, item) => sum + item.actual, 0);
+  }, [budgetTableData]);
 
   return (
     <div className="font-inter space-y-6">

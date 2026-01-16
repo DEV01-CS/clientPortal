@@ -9,7 +9,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Warn if using localhost in production
 if (process.env.NODE_ENV === 'production' && (API_BASE_URL.includes('127.0.0.1') || API_BASE_URL.includes('localhost'))) {
-  console.error('⚠️ WARNING: Using localhost API URL in production! Set REACT_APP_API_BASE_URL in Vercel environment variables.');
+  console.error(' WARNING: Using localhost API URL in production! Set REACT_APP_API_BASE_URL in Vercel environment variables.');
 }
 
 const api = axios.create({
@@ -59,7 +59,11 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If error is 401 and haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // BUT: Don't try to refresh if it's an admin OAuth error (let it pass through)
+    const isAdminOAuthError = error.response?.data?.error === "Admin Google account not connected" ||
+                              error.response?.data?.message?.includes("Admin Google account");
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !isAdminOAuthError) {
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {

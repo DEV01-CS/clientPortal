@@ -191,6 +191,9 @@ SIMPLE_JWT = {
 
 GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID', '16KsD6zG9YtOXnrVXg0oRAdie5KBNUfxcbvrTBMFTEd0')
 
+# Admin email - only this user can connect admin Google account
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'accounts@servicechargeuk.com')
+
 # Google OAuth 2.0 Settings
 GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')

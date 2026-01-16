@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { initiateGoogleOAuth, checkGoogleOAuthStatus } from '../services/googleOAuthService';
-import { CheckCircle, XCircle, Link as LinkIcon, Edit2, Save, X } from 'lucide-react';
+import { initiateGoogleOAuth, checkGoogleOAuthStatus, checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
+import { CheckCircle, XCircle, Link as LinkIcon, Edit2, Save, X, Settings } from 'lucide-react';
 import api from '../api/api';
 
 const MyAccount = () => {
     const { user: authUser, isAuthenticated } = useAuth();
     const [oauthStatus, setOauthStatus] = useState({ is_connected: false, is_expired: false });
+    const [adminOAuthStatus, setAdminOAuthStatus] = useState({ connected: false, is_expired: false });
     const [isConnecting, setIsConnecting] = useState(false);
+    const [isConnectingAdmin, setIsConnectingAdmin] = useState(false);
     const [message, setMessage] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,6 +26,9 @@ const MyAccount = () => {
         tax_id: '',
     });
 
+    // Admin email - only this user can see admin connection UI
+    const ADMIN_EMAIL = 'accounts@servicechargeuk.com';
+
     // Fetch profile data on mount
     useEffect(() => {
         if (isAuthenticated) {
@@ -35,6 +40,24 @@ const MyAccount = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const success = urlParams.get('success');
         const error = urlParams.get('error');
+        const adminSuccess = urlParams.get('admin_connected');
+        const adminError = urlParams.get('admin_error');
+        
+        // Handle admin OAuth callback
+        if (adminSuccess === 'true') {
+            setMessage('Admin Google account connected successfully!');
+            setTimeout(() => setMessage(''), 5000);
+            setTimeout(() => {
+                checkAdminOAuthStatusHandler();
+            }, 1000);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (adminError) {
+            setMessage(`Admin OAuth Error: ${adminError}`);
+            setTimeout(() => setMessage(''), 5000);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        // Handle user OAuth callback
         
         // Debug logging (only in development)
         if ((success || error) && process.env.NODE_ENV === 'development') {
@@ -83,6 +106,11 @@ const MyAccount = () => {
                 address: data.address || '',
                 tax_id: data.tax_id || '',
             });
+            
+            // Check admin OAuth status after profile is loaded (if user is admin)
+            if (authUser?.email === ADMIN_EMAIL || data.email === ADMIN_EMAIL) {
+                checkAdminOAuthStatusHandler();
+            }
         } catch (error) {
             if (process.env.NODE_ENV === 'development') {
               console.error('Error fetching profile:', error);
@@ -99,6 +127,11 @@ const MyAccount = () => {
                 address: '',
                 tax_id: '',
             });
+            
+            // Check admin OAuth status if user is admin (even if profile fetch failed)
+            if (authUser?.email === ADMIN_EMAIL) {
+                checkAdminOAuthStatusHandler();
+            }
         } finally {
             setIsLoading(false);
         }
@@ -123,6 +156,67 @@ const MyAccount = () => {
                 console.warn('Authentication required. Please login first.');
               }
             }
+        }
+    };
+
+    const checkAdminOAuthStatusHandler = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            
+            // Only check if user is admin
+            if (authUser?.email !== ADMIN_EMAIL && profileData?.email !== ADMIN_EMAIL) {
+                return;
+            }
+            
+            const status = await checkAdminOAuthStatus();
+            setAdminOAuthStatus(status);
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error checking admin OAuth status:', error);
+            }
+        }
+    };
+
+    const handleConnectAdminGoogle = async () => {
+        try {
+            setIsConnectingAdmin(true);
+            
+            const token = localStorage.getItem("token");
+            if (!token) {
+                setMessage('Please login first before connecting admin Google account.');
+                setIsConnectingAdmin(false);
+                return;
+            }
+            
+            const response = await initiateAdminGoogleOAuth();
+            
+            if (response && response.auth_url) {
+                window.location.href = response.auth_url;
+            } else {
+                throw new Error('No authorization URL received');
+            }
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error initiating admin OAuth:', error);
+            }
+            
+            let errorMessage = 'Failed to initiate admin Google connection. Please try again.';
+            
+            if (error.response) {
+                if (error.response.status === 401) {
+                    errorMessage = 'Authentication required. Please login again.';
+                } else if (error.response.status === 500) {
+                    errorMessage = error.response.data?.error || 'Server error. Please check OAuth configuration.';
+                } else {
+                    errorMessage = error.response.data?.error || error.response.data?.detail || errorMessage;
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            setMessage(errorMessage);
+            setIsConnectingAdmin(false);
         }
     };
 
@@ -323,6 +417,43 @@ const MyAccount = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Admin Google Connection Card - Only visible to admin email */}
+            {(authUser?.email === ADMIN_EMAIL || profileData?.email === ADMIN_EMAIL) && (
+                <div className="bg-blue-50 rounded-lg p-2 mb-2 border border-blue-200">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Settings className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900">Admin Google Account</h3>
+                                <p className="text-sm text-gray-600">
+                                    {adminOAuthStatus.connected 
+                                        ? 'Admin Google account is connected. All document uploads will go to admin\'s Drive.' 
+                                        : 'Connect admin\'s Google account (one-time setup) to enable document uploads for all users.'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {adminOAuthStatus.connected ? (
+                                <div className="flex items-center gap-2 text-green-600">
+                                    <CheckCircle className="w-5 h-5" />
+                                    <span className="text-sm font-medium">Connected</span>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleConnectAdminGoogle}
+                                    disabled={isConnectingAdmin}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                >
+                                    {isConnectingAdmin ? 'Connecting...' : 'Connect Admin Google'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Main Card */}
             <div className="bg-gray-200 rounded-lg p-6">

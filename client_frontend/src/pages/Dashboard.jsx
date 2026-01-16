@@ -10,7 +10,9 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { sendChatbotMessage } from "../services/chatbotService";
 import { fetchDashboardData } from "../services/dashboardService";
+import { fetchDocuments } from "../services/documentService";
 import LocationMap from "../components/LocationMap";
+import DocumentUploadModal from "../components/DocumentUploadModal";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -23,7 +25,7 @@ const Dashboard = () => {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef(null);
-  
+
   // Dashboard data from Google Sheets
   const [dashboardData, setDashboardData] = useState({
     propertySize: "710 Sq2",
@@ -37,6 +39,8 @@ const Dashboard = () => {
     locationMap: null, // Lat/Long coordinates from Column P
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [documents, setDocuments] = useState([]);
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,27 +56,31 @@ const Dashboard = () => {
       try {
         setIsLoadingData(true);
         const response = await fetchDashboardData();
-        
+
         if (response.data) {
           const data = response.data;
-          
+
           // Map Google Sheets columns to dashboard fields
-          // Handle different possible column name variations
-          const propertySize = data.property_size || data['Property Size'] || data.propertySize || "710 Sq2";
-          const bedrooms = data.bedrooms || data.Bedrooms || "2";
-          const location = data.postcode || data.postal_code || data['Postal Code'] || data.location || data['Location'] || "SW18 1UZ";
-          const locationDesc = data.city || data.City || data.location_desc || "Wandsworth";
-          const serviceCharge = data.service_charge || data['Service Charge'] || data.serviceCharge || "£2,551";
-          const serviceAmenities = data.service_amenities || data['Services & Amenities'] || data.amenities || "Concierge";
-          
-          // Get city and state/region for header display
-          const city = data.city || data.City || data.location_desc || data['City'] || "Wandsworth";
-          const state = data.state || data.State || data.region || data.Region || data['State'] || data['Region'] || "";
-          
-          // Get location map coordinates from Column P (Location Map)
-          // Handle different possible column name variations
-          const locationMap = data.location_map || data['Location Map'] || data.locationMap || data['location_map'] || null;
-          
+          // Handle different possible column name variations (optimized with helper function)
+          const getField = (fieldVariations, defaultValue) => {
+            for (const field of fieldVariations) {
+              if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
+                return data[field];
+              }
+            }
+            return defaultValue;
+          };
+
+          const propertySize = getField(['property_size', 'Property Size', 'propertySize'], "710 Sq2");
+          const bedrooms = getField(['bedrooms', 'Bedrooms'], "2");
+          const location = getField(['postcode', 'postal_code', 'Postal Code', 'location', 'Location'], "SW18 1UZ");
+          const locationDesc = getField(['city', 'City', 'location_desc'], "Wandsworth");
+          const serviceCharge = getField(['service_charge', 'Service Charge', 'serviceCharge'], "£2,551");
+          const serviceAmenities = getField(['service_amenities', 'Services & Amenities', 'amenities'], "Concierge");
+          const city = getField(['city', 'City', 'location_desc'], "Wandsworth");
+          const state = getField(['state', 'State', 'region', 'Region'], "");
+          const locationMap = getField(['location_map', 'Location Map', 'locationMap', 'location_map'], null);
+
           setDashboardData({
             propertySize: propertySize,
             bedrooms: bedrooms ? `${bedrooms} Bedroom${bedrooms !== '1' ? 's' : ''}` : "2 Bedroom",
@@ -96,7 +104,30 @@ const Dashboard = () => {
     };
 
     loadDashboardData();
+    loadDocuments();
   }, []);
+
+  // Load documents
+  const loadDocuments = async () => {
+    try {
+      const response = await fetchDocuments();
+      if (response.documents) {
+        setDocuments(response.documents.slice(0, 3)); // Show only first 3 in dashboard
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error fetching documents:", error);
+        // Check if it's an admin OAuth error
+        if (error.response?.status === 401 && error.response?.data?.error === "Admin Google account not connected") {
+          console.warn("⚠️ Admin Google account not connected. Please connect via: http://localhost:8000/api/sheets/oauth/admin/test/");
+        }
+      }
+    }
+  };
+
+  const handleDocumentUploadSuccess = () => {
+    loadDocuments(); // Reload documents after successful upload
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -110,7 +141,7 @@ const Dashboard = () => {
     try {
       // Call backend chatbot API
       const response = await sendChatbotMessage(userMessage);
-      
+
       if (response.success) {
         // Add bot response
         setMessages((prev) => [
@@ -136,10 +167,10 @@ const Dashboard = () => {
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
       }
-      
+
       // Show more specific error message
       let errorMessage = "Sorry, I'm having trouble connecting. Please try again later.";
-      
+
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.status === 401) {
@@ -149,7 +180,7 @@ const Dashboard = () => {
       } else if (error.message) {
         errorMessage = `Error: ${error.message}`;
       }
-      
+
       setMessages((prev) => [
         ...prev,
         {
@@ -231,12 +262,16 @@ const Dashboard = () => {
               Your Score: <span className="text-orange-500">High</span>
             </h3>
 
-            <div className="flex rounded-full overflow-hidden h-10 mb-3">
+            <div className="flex rounded-full overflow-hidden h-10 mb-3 relative">
               <Bar color="bg-green-500" label="VERY LOW" />
               <Bar color="bg-teal-400" label="LOW" />
               <Bar color="bg-yellow-400" label="MEDIUM" />
               <Bar color="bg-orange-500" label="HIGH" active />
               <Bar color="bg-red-500" label="VERY HIGH" />
+              {/* Arrow indicator on the active bar (HIGH = 4th bar, center at 70%) */}
+              <div className="absolute left-[70%] top-0 bottom-0 flex items-center justify-center pointer-events-none z-10 ">
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-white-500 mt-8" />
+              </div>
             </div>
 
             <div className="flex justify-center items-center mb-6">
@@ -261,23 +296,61 @@ const Dashboard = () => {
                   <div className="text-gray-500">Loading map...</div>
                 </div>
               ) : (
-                <LocationMap
-                  latitude={dashboardData.locationMap}
-                  longitude={null}
-                  location={`${dashboardData.locationDesc}, ${dashboardData.location}`}
-                  height="288px"
-                />
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboardData.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block cursor-pointer"
+                >
+                  <LocationMap
+                    latitude={dashboardData.locationMap}
+                    longitude={null}
+                    location={`${dashboardData.locationDesc}, ${dashboardData.location}`}
+                    postcode={dashboardData.location}
+                    height="288px"
+                  />
+                </a>
               )}
             </div>
 
             {/* DOCS + CHAT */}
             <div className="lg:col-span-1 space-y-6">
               {/* DOCS */}
-              <Card title="Docs">
-                <DocItem name="Budget Report.pdf" />
-                <DocItem name="Monthly Report.pdf" />
-                <DocItem name="Service Charge Invoice.pdf" />
+              <Card>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-gray-900">Documents</h3>
+                  <button 
+                    onClick={() => setIsDocumentModalOpen(true)}
+                    className="bg-sidebar text-white px-3 py-1 rounded-md text-sm hover:bg-teal-600 transition-colors"
+                  >
+                    + Add Doc
+                  </button>
+                </div>
+                {documents.length === 0 ? (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No documents yet
+                  </div>
+                ) : (
+                  documents.map((doc, index) => (
+                    <DocItem 
+                      key={index} 
+                      name={doc.name || 'Untitled Document'}
+                      onClick={() => {
+                        if (doc.drive_file?.webViewLink) {
+                          window.open(doc.drive_file.webViewLink, '_blank');
+                        }
+                      }}
+                    />
+                  ))
+                )}
               </Card>
+
+              {/* Document Upload Modal */}
+              <DocumentUploadModal
+                isOpen={isDocumentModalOpen}
+                onClose={() => setIsDocumentModalOpen(false)}
+                onUploadSuccess={handleDocumentUploadSuccess}
+              />
 
               {/* CHAT */}
               <div className="bg-gray-100 rounded-lg p-4 shadow-sm h-[320px] flex flex-col">
@@ -349,14 +422,14 @@ const KeyValue = ({ label, value }) => (
 const Bar = ({ color, label, active }) => (
   <div className={`flex-1 ${color} flex items-center justify-center text-white text-xs font-semibold relative`}>
     {label}
-    {active && (
-      <div className="absolute -bottom-3 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-orange-500" />
-    )}
   </div>
 );
 
-const DocItem = ({ name }) => (
-  <div className="flex items-center gap-2 text-xs hover:bg-gray-100 p-1 rounded cursor-pointer">
+const DocItem = ({ name, onClick }) => (
+  <div 
+    onClick={onClick}
+    className="flex items-center gap-2 text-xs hover:bg-gray-100 p-1 rounded cursor-pointer"
+  >
     <div className="w-8 h-8 bg-gray-250 rounded flex items-center justify-center text-xs font-semibold">PDF</div>
     {name}
   </div>

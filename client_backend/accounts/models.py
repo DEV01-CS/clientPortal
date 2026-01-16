@@ -38,3 +38,32 @@ class GoogleOAuthToken(models.Model):
     def __str__(self):
         return f"{self.user.username} - Google OAuth Token"
 
+
+class AdminGoogleOAuthToken(models.Model):
+    """Store admin's Google OAuth credentials for Sheets and Drive access"""
+    access_token = models.TextField()
+    refresh_token = models.TextField(null=True, blank=True)
+    token_expiry = models.DateTimeField(null=True, blank=True)
+    scopes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def is_expired(self):
+        if not self.token_expiry:
+            return True
+        return timezone.now() >= self.token_expiry
+    
+    class Meta:
+        verbose_name = "Admin Google OAuth Token"
+        verbose_name_plural = "Admin Google OAuth Tokens"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one admin token exists
+        if not self.pk and AdminGoogleOAuthToken.objects.exists():
+            # Delete existing token if creating new one
+            AdminGoogleOAuthToken.objects.all().delete()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Admin Google OAuth Token - Created: {self.created_at}"
+

@@ -27,7 +27,9 @@ const MyLease = () => {
             title="Property Demise"
             isOpen={openSection1 === true}
             onClick={() => setOpenSection1(openSection1 === true ? false : true)}
-          />
+            >
+            <LeaseText />
+          </Accordion>
 
           <Accordion
             title="Service Charge Recoverable"
@@ -42,19 +44,25 @@ const MyLease = () => {
             title="Health & Safety Recoverable"
             isOpen={openSection3 === true}
             onClick={() => setOpenSection3(openSection3 === true ? false : true)}
-          />
+            >
+            <LeaseText />
+          </Accordion>
 
           <Accordion
             title="Non-Recoverables"
             isOpen={openSection4 === true}
             onClick={() => setOpenSection4(openSection4 === true ? false : true)}
-          />
+            >
+            <LeaseText />
+          </Accordion>
 
           <Accordion
             title="Sweeper Clauses"
             isOpen={openSection5 === true}
             onClick={() => setOpenSection5(openSection5 === true ? false : true)}
-          />
+            >
+            <LeaseText />
+          </Accordion>
         </div>
 
         {/* RIGHT PANEL */}

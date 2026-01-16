@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -55,66 +55,130 @@ const parseDMS = (dmsString) => {
   return null;
 };
 
-const LocationMap = ({ latitude, longitude, location, height = '288px' }) => {
+// Function to geocode postcode using Nominatim (OpenStreetMap)
+const geocodePostcode = async (postcode) => {
+  if (!postcode) return null;
+  
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(postcode)}&limit=1`,
+      {
+        headers: {
+          'User-Agent': 'ClientPortal/1.0'
+        }
+      }
+    );
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Geocoding error:', error);
+    }
+  }
+  return null;
+};
+
+const LocationMap = ({ latitude, longitude, location, postcode, height = '288px' }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
+  const circleRef = useRef(null);
+  const [coordinates, setCoordinates] = useState(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // Geocode postcode if coordinates not available
+  useEffect(() => {
+    const getCoordinates = async () => {
+      let lat = null;
+      let lng = null;
+
+      // First, try to parse provided coordinates
+      if (latitude && typeof latitude === 'string') {
+        const coordString = latitude.trim();
+        
+        // Try DMS format
+        const dmsResult = parseDMS(coordString);
+        if (dmsResult) {
+          lat = dmsResult.lat;
+          lng = dmsResult.lng;
+        }
+        // Try decimal degrees formats
+        else if (coordString.includes(',')) {
+          const coords = coordString.split(',').map(c => c.trim());
+          if (coords.length >= 2) {
+            lat = parseFloat(coords[0]);
+            lng = parseFloat(coords[1]);
+          }
+        }
+        else if (coordString.includes('|')) {
+          const coords = coordString.split('|').map(c => c.trim());
+          if (coords.length >= 2) {
+            lat = parseFloat(coords[0]);
+            lng = parseFloat(coords[1]);
+          }
+        }
+        else if (coordString.includes(' ')) {
+          const coords = coordString.split(/\s+/);
+          if (coords.length >= 2) {
+            lat = parseFloat(coords[0]);
+            lng = parseFloat(coords[1]);
+          }
+        }
+      } 
+      // If separate lat/lng are provided
+      else if (latitude && longitude) {
+        lat = parseFloat(latitude);
+        lng = parseFloat(longitude);
+      }
+
+      // If we have valid coordinates, use them
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        setCoordinates({ lat, lng });
+        return;
+      }
+
+      // Otherwise, try to geocode the postcode
+      if (postcode) {
+        setIsGeocoding(true);
+        const geocoded = await geocodePostcode(postcode);
+        if (geocoded) {
+          setCoordinates(geocoded);
+        } else {
+          // Fallback: try geocoding the full location string
+          if (location) {
+            const geocodedLocation = await geocodePostcode(location);
+            if (geocodedLocation) {
+              setCoordinates(geocodedLocation);
+            }
+          }
+        }
+        setIsGeocoding(false);
+      }
+    };
+
+    getCoordinates();
+  }, [latitude, longitude, postcode, location]);
 
   useEffect(() => {
-    // Parse coordinates - handle different formats
-    let lat = null;
-    let lng = null;
-
-    // If coordinates are provided as a single string (from Column P)
-    if (latitude && typeof latitude === 'string') {
-      const coordString = latitude.trim();
-      
-      // First, try DMS format (e.g., "51°27'41.8"N 0°11'34.8"W")
-      const dmsResult = parseDMS(coordString);
-      if (dmsResult) {
-        lat = dmsResult.lat;
-        lng = dmsResult.lng;
-      }
-      // Try decimal degrees formats like "51.123, -0.456" or "51.123,-0.456" or "51.123|-0.456"
-      else if (coordString.includes(',')) {
-        const coords = coordString.split(',').map(c => c.trim());
-        if (coords.length >= 2) {
-          lat = parseFloat(coords[0]);
-          lng = parseFloat(coords[1]);
-        }
-      }
-      // Try pipe-separated
-      else if (coordString.includes('|')) {
-        const coords = coordString.split('|').map(c => c.trim());
-        if (coords.length >= 2) {
-          lat = parseFloat(coords[0]);
-          lng = parseFloat(coords[1]);
-        }
-      }
-      // Try space-separated
-      else if (coordString.includes(' ')) {
-        const coords = coordString.split(/\s+/);
-        if (coords.length >= 2) {
-          lat = parseFloat(coords[0]);
-          lng = parseFloat(coords[1]);
-        }
-      }
-    } 
-    // If separate lat/lng are provided
-    else if (latitude && longitude) {
-      lat = parseFloat(latitude);
-      lng = parseFloat(longitude);
-    }
-
     // Default to London if no valid coordinates
     const defaultLat = 51.5074;
     const defaultLng = -0.1278;
+    
+    const lat = coordinates?.lat;
+    const lng = coordinates?.lng;
+    const hasValidCoords = lat && lng && !isNaN(lat) && !isNaN(lng);
 
     if (!mapInstanceRef.current && mapRef.current) {
       // Initialize map
       const map = L.map(mapRef.current).setView(
-        lat && lng && !isNaN(lat) && !isNaN(lng) ? [lat, lng] : [defaultLat, defaultLng],
-        lat && lng && !isNaN(lat) && !isNaN(lng) ? 15 : 10
+        hasValidCoords ? [lat, lng] : [defaultLat, defaultLng],
+        hasValidCoords ? 15 : 10
       );
 
       // Add OpenStreetMap tiles
@@ -125,32 +189,65 @@ const LocationMap = ({ latitude, longitude, location, height = '288px' }) => {
 
       mapInstanceRef.current = map;
 
-      // Add marker if valid coordinates
-      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-        const marker = L.marker([lat, lng]).addTo(map);
+      // Add marker and circle if valid coordinates
+      if (hasValidCoords) {
+        // Add marker with custom styling
+        const marker = L.marker([lat, lng], {
+          icon: L.icon({
+            iconUrl: icon,
+            shadowUrl: iconShadow,
+            iconSize: [20, 28],
+            iconAnchor: [16, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          })
+        }).addTo(map);
         markerRef.current = marker;
 
+
         // Add popup with location info
-        if (location) {
-          marker.bindPopup(`<b>${location}</b>`).openPopup();
+        if (location || postcode) {
+          marker.bindPopup(`<b>${location || postcode}</b>`).openPopup();
         }
       }
     } else if (mapInstanceRef.current) {
       // Update map if coordinates change
-      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+      if (hasValidCoords) {
         mapInstanceRef.current.setView([lat, lng], 15);
 
         // Update or create marker
         if (markerRef.current) {
           markerRef.current.setLatLng([lat, lng]);
         } else {
-          const marker = L.marker([lat, lng]).addTo(mapInstanceRef.current);
+          const marker = L.marker([lat, lng], {
+            icon: L.icon({
+              iconUrl: icon,
+              shadowUrl: iconShadow,
+              iconSize: [32, 41],
+              iconAnchor: [16, 41],
+              popupAnchor: [1, -34],
+              shadowSize: [41, 41]
+            })
+          }).addTo(mapInstanceRef.current);
           markerRef.current = marker;
         }
 
+        // Update or create circle
+        if (circleRef.current) {
+          circleRef.current.setLatLng([lat, lng]);
+        } else {
+          const circle = L.circle([lat, lng], {
+            color: '#14B8A6',
+            fillColor: '#14B8A6',
+            fillOpacity: 0.2,
+            radius: 200
+          }).addTo(mapInstanceRef.current);
+          circleRef.current = circle;
+        }
+
         // Update popup
-        if (location && markerRef.current) {
-          markerRef.current.bindPopup(`<b>${location}</b>`).openPopup();
+        if ((location || postcode) && markerRef.current) {
+          markerRef.current.bindPopup(`<b>${location || postcode}</b>`).openPopup();
         }
       }
     }
@@ -161,20 +258,41 @@ const LocationMap = ({ latitude, longitude, location, height = '288px' }) => {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markerRef.current = null;
+        circleRef.current = null;
       }
     };
-  }, [latitude, longitude, location]);
+  }, [coordinates, location, postcode]);
 
   return (
-    <div
-      ref={mapRef}
-      style={{
-        height: height,
-        width: '100%',
-        borderRadius: '0.5rem',
-        zIndex: 0,
-      }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: height }}>
+      <div
+        ref={mapRef}
+        style={{
+          height: height,
+          width: '100%',
+          borderRadius: '0.5rem',
+          zIndex: 0,
+        }}
+      />
+      {isGeocoding && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(255, 255, 255, 0.9)',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            zIndex: 1000,
+            fontSize: '14px',
+            color: '#666',
+          }}
+        >
+          Locating...
+        </div>
+      )}
+    </div>
   );
 };
 

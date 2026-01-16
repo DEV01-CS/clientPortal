@@ -18,3 +18,22 @@ export const checkGoogleOAuthStatus = async () => {
   }
 };
 
+// Admin OAuth functions
+export const checkAdminOAuthStatus = async () => {
+  try {
+    const response = await api.get("/api/sheets/oauth/admin/status/");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const initiateAdminGoogleOAuth = async () => {
+  try {
+    const response = await api.get("/api/sheets/oauth/admin/initiate/");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
