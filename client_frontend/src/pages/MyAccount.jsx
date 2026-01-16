@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { initiateGoogleOAuth, checkGoogleOAuthStatus, checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
 import { CheckCircle, XCircle, Link as LinkIcon, Edit2, Save, X, Settings } from 'lucide-react';
@@ -28,6 +28,72 @@ const MyAccount = () => {
 
     // Admin email - only this user can see admin connection UI
     const ADMIN_EMAIL = 'accounts@servicechargeuk.com';
+
+    const checkAdminOAuthStatusHandler = useCallback(async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            
+            // Only check if user is admin
+            if (authUser?.email !== ADMIN_EMAIL && profileData?.email !== ADMIN_EMAIL) {
+                return;
+            }
+            
+            const status = await checkAdminOAuthStatus();
+            setAdminOAuthStatus(status);
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error checking admin OAuth status:', error);
+            }
+        }
+    }, [authUser?.email, profileData?.email]);
+
+    const fetchProfileData = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const response = await api.get('/api/accounts/profile/');
+            const data = response.data;
+            setProfileData({
+                first_name: data.first_name || '',
+                last_name: data.last_name || '',
+                email: data.email || authUser?.email || '',
+                phone: data.phone || '',
+                country: data.country || '',
+                city: data.city || '',
+                postcode: data.postcode || '',
+                address: data.address || '',
+                tax_id: data.tax_id || '',
+            });
+            
+            // Check admin OAuth status after profile is loaded (if user is admin)
+            if (authUser?.email === ADMIN_EMAIL || data.email === ADMIN_EMAIL) {
+                checkAdminOAuthStatusHandler();
+            }
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error fetching profile:', error);
+            }
+            // If profile doesn't exist, use auth user data
+            setProfileData({
+                first_name: '',
+                last_name: '',
+                email: authUser?.email || '',
+                phone: '',
+                country: '',
+                city: '',
+                postcode: '',
+                address: '',
+                tax_id: '',
+            });
+            
+            // Check admin OAuth status if user is admin (even if profile fetch failed)
+            if (authUser?.email === ADMIN_EMAIL) {
+                checkAdminOAuthStatusHandler();
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }, [authUser?.email, checkAdminOAuthStatusHandler]);
 
     // Fetch profile data on mount
     useEffect(() => {
@@ -88,54 +154,7 @@ const MyAccount = () => {
             setTimeout(() => setMessage(''), 5000);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-    }, [isAuthenticated]);
-
-    const fetchProfileData = async () => {
-        try {
-            setIsLoading(true);
-            const response = await api.get('/api/accounts/profile/');
-            const data = response.data;
-            setProfileData({
-                first_name: data.first_name || '',
-                last_name: data.last_name || '',
-                email: data.email || authUser?.email || '',
-                phone: data.phone || '',
-                country: data.country || '',
-                city: data.city || '',
-                postcode: data.postcode || '',
-                address: data.address || '',
-                tax_id: data.tax_id || '',
-            });
-            
-            // Check admin OAuth status after profile is loaded (if user is admin)
-            if (authUser?.email === ADMIN_EMAIL || data.email === ADMIN_EMAIL) {
-                checkAdminOAuthStatusHandler();
-            }
-        } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error fetching profile:', error);
-            }
-            // If profile doesn't exist, use auth user data
-            setProfileData({
-                first_name: '',
-                last_name: '',
-                email: authUser?.email || '',
-                phone: '',
-                country: '',
-                city: '',
-                postcode: '',
-                address: '',
-                tax_id: '',
-            });
-            
-            // Check admin OAuth status if user is admin (even if profile fetch failed)
-            if (authUser?.email === ADMIN_EMAIL) {
-                checkAdminOAuthStatusHandler();
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    }, [isAuthenticated, fetchProfileData, checkAdminOAuthStatusHandler]);
 
     const checkOAuthStatus = async () => {
         try {
@@ -159,24 +178,6 @@ const MyAccount = () => {
         }
     };
 
-    const checkAdminOAuthStatusHandler = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            if (!token) return;
-            
-            // Only check if user is admin
-            if (authUser?.email !== ADMIN_EMAIL && profileData?.email !== ADMIN_EMAIL) {
-                return;
-            }
-            
-            const status = await checkAdminOAuthStatus();
-            setAdminOAuthStatus(status);
-        } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error checking admin OAuth status:', error);
-            }
-        }
-    };
 
     const handleConnectAdminGoogle = async () => {
         try {

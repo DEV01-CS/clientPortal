@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { X, Upload, FileText } from "lucide-react";
 import { uploadDocument } from "../services/documentService";
-import { useAuth } from "../auth/AuthContext";
 
 const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     description: "",

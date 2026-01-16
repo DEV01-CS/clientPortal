@@ -67,7 +67,7 @@ const Login = () => {
         const username = generateUsernameFromEmail(formData.email);
 
         // Signup flow
-        const signupResponse = await api.post("/api/accounts/signup/", {
+        await api.post("/api/accounts/signup/", {
           username: username,
           email: formData.email,
           password: formData.password,
