@@ -96,7 +96,7 @@ const MyTrends = () => {
     }
 
     return categories.map(cat => ({ category: cat.name, budget: null, actual: null }));
-  }, [appData, selectedYear, getData]);
+  }, [selectedYear, getData]);
 
   // Budget data for pie chart (year-specific)
   const budgetData = useMemo(() => {

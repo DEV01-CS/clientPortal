@@ -58,6 +58,14 @@ const MyLease = () => {
     rightPanelItems.push({ key: `4"${i.toString().padStart(2, '0')}`, id: i });
   }
   
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-gray-600">Loading lease data...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-100 min-h-screen p-6 font-inter">
       {/* Header */}
