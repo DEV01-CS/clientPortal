@@ -18,7 +18,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.file'  # Upload files to Google Drive
 ]
 
-# OAuth  Client Configurationc
+# OAuth  Client Configuration
 CLIENT_ID = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', None)
 CLIENT_SECRET = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', None)
 REDIRECT_URI = getattr(settings, 'GOOGLE_OAUTH_REDIRECT_URI', 'http://localhost:8000/api/sheets/oauth/callback/')
@@ -26,7 +26,7 @@ REDIRECT_URI = getattr(settings, 'GOOGLE_OAUTH_REDIRECT_URI', 'http://localhost:
 def get_oauth_flow():
     """Create OAuth flow for user authentication"""
     if not CLIENT_ID or not CLIENT_SECRET or str(CLIENT_ID).strip() == '' or str(CLIENT_SECRET).strip() == '':
-        raise Exception("Google OAuth credentials not configured.Please set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in settings.py or environment variables.")
+        raise Exception("Google OAuth credentials not configured.Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in settings.py or environment variables.")
     
     flow = Flow.from_client_config(
         {
@@ -105,7 +105,7 @@ def exchange_code_for_tokens(user, authorization_code):
         
         # Set expiry time
         credentials.expiry = timezone.now() + timedelta(seconds=expires_in)
-        
+    
     except requests.exceptions.RequestException as e:
         raise Exception(f"Failed to exchange authorization code for tokens: {str(e)}")
     except Exception as e:
@@ -220,7 +220,7 @@ def get_connected_google_email(user):
         return user.email if hasattr(user, 'email') else 'Unknown'
 
 
-# ==================== ADMIN OAUTH FUNCTIONS ====================
+#ADMIN OAUTH FUNCTIONS
 
 def get_admin_credentials():
     """Get admin's Google OAuth credentials"""
@@ -273,7 +273,7 @@ def get_admin_drive_service():
         raise Exception(f"Error initializing admin Google Drive service: {str(e)}")
 
 def get_or_create_upload_folder(drive_service, folder_name="Client Portal Documents"):
-    """Get or create a folder in admin's Drive for uploaded documents"""
+    """Getting or creating a folder in admin's Drive for uploaded documents"""
     try:
         # Search for existing folder
         query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"

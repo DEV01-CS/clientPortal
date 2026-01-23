@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { fetchDashboardData } from "../services/dashboardService";
 import {
   PieChart,
   Pie,
@@ -13,127 +14,187 @@ import {
   LineChart,
   Line,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 const MyTrends = () => {
   const [selectedYear, setSelectedYear] = useState("2025");
+  const [appData, setAppData] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  // Year-specific budget data
-  const yearData = {
-    "2023": {
-      pieData: [
-        { name: "Staff", value: 90000, color: "#14B8A6" },
-        { name: "Contracts & Maintenance", value: 75000, color: "#5EEAD4" },
-        { name: "Utilities", value: 55000, color: "#99F6E4" },
-        { name: "Other", value: 120000, color: "#E5E7EB" },
-      ],
-      tableData: [
-        { category: "Staff", budget: 18000, actual: 20000 },
-        { category: "Contracts & Maintenance", budget: 75000, actual: 72000 },
-        { category: "Utilities", budget: 55000, actual: 58000 },
-        { category: "Insurance", budget: 28000, actual: 29000 },
-        { category: "Professional Fees", budget: 35000, actual: 33000 },
-        { category: "Compliance", budget: 45000, actual: 48000 },
-        { category: "Reserve Fund", budget: 95000, actual: 100000 },
-      ],
-    },
-    "2024": {
-      pieData: [
-        { name: "Staff", value: 95000, color: "#14B8A6" },
-        { name: "Contracts & Maintenance", value: 78000, color: "#5EEAD4" },
-        { name: "Utilities", value: 58000, color: "#99F6E4" },
-        { name: "Other", value: 125000, color: "#E5E7EB" },
-      ],
-      tableData: [
-        { category: "Staff", budget: 19000, actual: 22000 },
-        { category: "Contracts & Maintenance", budget: 78000, actual: 76000 },
-        { category: "Utilities", budget: 58000, actual: 60000 },
-        { category: "Insurance", budget: 29000, actual: 30000 },
-        { category: "Professional Fees", budget: 37000, actual: 36000 },
-        { category: "Compliance", budget: 48000, actual: 50000 },
-        { category: "Reserve Fund", budget: 98000, actual: 105000 },
-      ],
-    },
-    "2025": {
-      pieData: [
-        { name: "Staff", value: 100000, color: "#14B8A6" },
-        { name: "Contracts & Maintenance", value: 80000, color: "#5EEAD4" },
-        { name: "Utilities", value: 60000, color: "#99F6E4" },
-        { name: "Other", value: 130000, color: "#E5E7EB" },
-      ],
-      tableData: [
-        { category: "Staff", budget: 20000, actual: 25000 },
-        { category: "Contracts & Maintenance", budget: 80000, actual: 75000 },
-        { category: "Utilities", budget: 60000, actual: 65000 },
-        { category: "Insurance", budget: 30000, actual: 32000 },
-        { category: "Professional Fees", budget: 40000, actual: 38000 },
-        { category: "Compliance", budget: 50000, actual: 55000 },
-        { category: "Reserve Fund", budget: 100000, actual: 110000 },
-      ],
-    },
-    "2026": {
-      pieData: [
-        { name: "Staff", value: 105000, color: "#14B8A6" },
-        { name: "Contracts & Maintenance", value: 82000, color: "#5EEAD4" },
-        { name: "Utilities", value: 62000, color: "#99F6E4" },
-        { name: "Other", value: 135000, color: "#E5E7EB" },
-      ],
-      tableData: [
-        { category: "Staff", budget: 22000, actual: 24000 },
-        { category: "Contracts & Maintenance", budget: 82000, actual: 80000 },
-        { category: "Utilities", budget: 62000, actual: 64000 },
-        { category: "Insurance", budget: 32000, actual: 33000 },
-        { category: "Professional Fees", budget: 42000, actual: 40000 },
-        { category: "Compliance", budget: 52000, actual: 56000 },
-        { category: "Reserve Fund", budget: 105000, actual: 112000 },
-      ],
-    },
-  };
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetchDashboardData();
+        if (response.data) {
+          setAppData(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading trends data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  // Get current year's data
-  const currentYearData = yearData[selectedYear] || yearData["2025"];
+  // Get raw data (returns null if missing/empty) for display
+  const getData = useCallback((key) => {
+    if (!appData) return null;
+    let value = appData[key];
+    if (value === undefined) value = appData[key.replace('"', '”')];
+    if (value === undefined) value = appData[key.replace('”', '"')];
+
+    if (value === undefined || value === null || String(value).trim() === '') return null;
+    return value;
+  }, [appData]);
+
+  // Get numeric data (returns 0 if missing) for charts
+  const getNumber = useCallback((key) => {
+    const val = getData(key);
+    if (val === null) return 0;
+    const num = parseFloat(String(val).replace(/,/g, '').replace(/£/g, ''));
+    return isNaN(num) ? 0 : num;
+  }, [getData]);
+
+  // Budget Table Data (2"02 to 2"15)
+  const budgetTableData = useMemo(() => {
+    const categories = [
+      { name: "Staff", budgetKey: '2"02', actualKey: '2"09' },
+      { name: "Contracts & Maintenance", budgetKey: '2"03', actualKey: '2"10' },
+      { name: "Utilities", budgetKey: '2"04', actualKey: '2"11' },
+      { name: "Insurance", budgetKey: '2"05', actualKey: '2"12' },
+      { name: "Professional Fees", budgetKey: '2"06', actualKey: '2"13' },
+      { name: "Compliance", budgetKey: '2"07', actualKey: '2"14' },
+      { name: "Reserve Fund", budgetKey: '2"08', actualKey: '2"15' },
+    ];
+
+    // If selected year is 2025, use the detailed keys (2"02 - 2"15)
+    if (selectedYear === "2025") {
+      return categories.map(cat => ({
+        category: cat.name,
+        budget: getData(cat.budgetKey),
+        actual: getData(cat.actualKey),
+      }));
+    }
+
+    // For other years, map from trend data (2"17 onwards)
+    // 2023: 17-23, 2024: 24-30, 2026: 38-44
+    // Note: 2025 trend data is 31-37, but we use detailed keys for 2025 above
+    const yearMap = { "2023": 17, "2024": 24, "2026": 38 };
+    const startKey = yearMap[selectedYear];
+
+    if (startKey) {
+      return categories.map((cat, index) => {
+        const key = `2"${String(startKey + index).padStart(2, '0')}`;
+        return {
+          category: cat.name,
+          budget: getData(key), // Assuming trend data represents Budget
+          actual: null // No actuals available for these years in this view
+        };
+      });
+    }
+
+    return categories.map(cat => ({ category: cat.name, budget: null, actual: null }));
+  }, [appData, selectedYear, getData]);
 
   // Budget data for pie chart (year-specific)
-  const budgetData = currentYearData.pieData;
+  const budgetData = useMemo(() => {
+    // Create a map for O(1) lookup instead of repeated .find()
+    const budgetMap = new Map(budgetTableData.map(item => [item.category, parseFloat(item.budget || 0) || 0]));
 
-  // Budget vs Actual table data (year-specific)
-  const budgetTableData = currentYearData.tableData;
+    return [
+      { name: "Staff", value: budgetMap.get("Staff") || 0, color: "#14B8A6" },
+      { name: "Contracts & Maintenance", value: budgetMap.get("Contracts & Maintenance") || 0, color: "#5EEAD4" },
+      { name: "Utilities", value: budgetMap.get("Utilities") || 0, color: "#99F6E4" },
+      { name: "Other", value: (budgetMap.get("Insurance") || 0) + (budgetMap.get("Professional Fees") || 0) + (budgetMap.get("Compliance") || 0) + (budgetMap.get("Reserve Fund") || 0), color: "#E5E7EB" },
+    ];
+  }, [budgetTableData]);
 
   // Calculate variance for bar chart (year-specific)
   const varianceData = useMemo(() => {
-    return budgetTableData.map((item) => ({
-      category: item.category,
-      variance: ((item.actual - item.budget) / item.budget) * 100,
-    }));
-  }, [budgetTableData]);
+    const varianceValue = getNumber('2"16');
+    return budgetTableData.map((item, index) => {
+      let variance = 0;
+      const budget = parseFloat(item.budget || 0);
+      const actual = parseFloat(item.actual || 0);
 
-  // Past budget trends data
-  const trendsData = [
-    { year: 2023, yourServiceCharge: 15, tpiIndex: 12, staff: 8 },
-    { year: 2024, yourServiceCharge: 20, tpiIndex: 15, staff: 6 },
-    { year: 2025, yourServiceCharge: 28, tpiIndex: 18, staff: 10 },
-    { year: 2026, yourServiceCharge: 25, tpiIndex: 20, staff: 12 },
+      if (index === 0 && selectedYear === "2025") {
+        variance = varianceValue;
+      } else if (item.budget && item.actual) {
+        variance = ((actual - budget) / (budget || 1)) * 100;
+      }
+      return { category: item.category, variance };
+    });
+  }, [budgetTableData, selectedYear, getNumber]);
+
+  // Past budget trends data (2"17 to 2"44)
+  const pastBudgetsData = useMemo(() => {
+    const years = [2023, 2024, 2025, 2026];
+    const categories = [
+        "Staff", "Contracts & Maintenance", "Utilities", "Insurance",
+        "Professional Fees", "Compliance", "Reserve Fund"
+    ];
+    const data = [];
+    let keyIndex = 17;
+    for (const year of years) {
+        const yearData = { year };
+        for (const cat of categories) {
+            const key = `2"${String(keyIndex).padStart(2, '0')}`;
+            yearData[cat] = getNumber(key);
+            keyIndex++;
+        }
+        data.push(yearData);
+    }
+    return data;
+  }, [getNumber]);
+
+  const trendLineCategories = [
+    { name: "Staff", color: "#1E40AF" },
+    { name: "Contracts & Maintenance", color: "#60A5FA" },
+    { name: "Utilities", color: "#93C5FD" },
+    { name: "Insurance", color: "#F87171" },
+    { name: "Professional Fees", color: "#FB923C" },
+    { name: "Compliance", color: "#FBBF24" },
+    { name: "Reserve Fund", color: "#4ADE80" },
   ];
 
   // Influencers data
-  const influencersData = [
-    { category: "Managing Fees", value: -2 },
-    { category: "Staff", value: 4 },
-    { category: "C, M & S", value: 3 },
-    { category: "Compliance", value: 5 },
-    { category: "Insurance", value: 2 },
-    { category: "Utilities", value: 1 },
-    { category: "Reserve Fund", value: 6 },
-  ];
+  const influencersData = useMemo(() => {
+    const categories = [
+        { name: "Managing Fees", key: '2"42', group: 'Internal' },
+        { name: "Staff", key: '2"41', group: 'Internal' },
+        { name: "C, M & S", key: '2"43', group: 'External' },
+        { name: "Compliance", key: '2"44', group: 'External' },
+        { name: "Insurance", key: '2"45', group: 'External' },
+        { name: "Utilities", key: '2"46', group: 'External' },
+        { name: "Reserve Fund", key: '2"47', group: 'External' },
+        { name: "Other", key: '2"48', group: 'External' },
+    ];
+    return categories.map(cat => ({
+        category: cat.name,
+        value: getNumber(cat.key),
+        group: cat.group,
+        fill: cat.group === 'Internal' ? '#14B8A6' : '#3B82F6',
+    }));
+  }, [getNumber]);
 
   // Calculate totals (year-specific)
   const totalBudget = useMemo(() => {
-    return budgetTableData.reduce((sum, item) => sum + item.budget, 0);
+    return budgetTableData.reduce((sum, item) => sum + (parseFloat(item.budget) || 0), 0);
   }, [budgetTableData]);
 
   const totalActual = useMemo(() => {
-    return budgetTableData.reduce((sum, item) => sum + item.actual, 0);
+    return budgetTableData.reduce((sum, item) => sum + (parseFloat(item.actual) || 0), 0);
   }, [budgetTableData]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">Loading trends data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="font-inter space-y-6">
@@ -142,7 +203,6 @@ const MyTrends = () => {
         <h1 className="text-2xl font-semibold text-gray-900">My Trends</h1>
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-full cursor-pointer">
           <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span>
-          <span className="text-gray-500">▼</span>
         </div>
       </div>
 
@@ -205,10 +265,10 @@ const MyTrends = () => {
                       <tr key={index} className="border-b">
                         <td className="py-2 text-gray-900">{item.category}</td>
                         <td className="text-right py-2 text-gray-700">
-                          £{item.budget.toLocaleString()}
+                          {item.budget !== null ? `£${parseFloat(item.budget).toLocaleString()}` : "N/A"}
                         </td>
                         <td className="text-right py-2 text-gray-700">
-                          £{item.actual.toLocaleString()}
+                          {item.actual !== null ? `£${parseFloat(item.actual).toLocaleString()}` : "N/A"}
                         </td>
                       </tr>
                     ))}
@@ -234,10 +294,13 @@ const MyTrends = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={varianceData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[-50, 50]} />
-                  <YAxis dataKey="category" type="category" width={120} />
+                  <XAxis type="number" domain={[-50, 50]} tickFormatter={(value) => `${value}%`} />
+                  <YAxis dataKey="category" type="category" width={120} tick={{ fontSize: 10 }} />
                   <Tooltip />
-                  <Bar dataKey="variance" fill="#14B8A6" />
+                  <ReferenceLine x={0} stroke="#000" />
+                  <Bar dataKey="variance" >
+                    {varianceData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.variance >= 0 ? '#14B8A6' : '#ef4444'} />)}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -251,36 +314,22 @@ const MyTrends = () => {
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Past Budget</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={trendsData}>
+            <LineChart data={pastBudgetsData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
-              <YAxis domain={[0, 40]} />
+              <YAxis tickFormatter={(value) => `£${value.toLocaleString()}`} />
               <Tooltip />
               <Legend />
-              <Line
-                type="monotone"
-                dataKey="yourServiceCharge"
-                stroke="#1E40AF"
-                strokeWidth={2}
-                name="Your Service Charge"
-                dot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="tpiIndex"
-                stroke="#60A5FA"
-                strokeWidth={2}
-                name="TPI Service Charge Index"
-                dot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="staff"
-                stroke="#9CA3AF"
-                strokeWidth={2}
-                name="Staff"
-                dot={{ r: 4 }}
-              />
+              {trendLineCategories.map(cat => (
+                <Line
+                  key={cat.name}
+                  type="monotone"
+                  dataKey={cat.name}
+                  stroke={cat.color}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -292,9 +341,14 @@ const MyTrends = () => {
             <BarChart data={influencersData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="category" angle={-45} textAnchor="end" height={100} />
-              <YAxis domain={[-4, 8]} />
+              <YAxis domain={[-10, 10]} tickFormatter={(value) => `${value}%`} />
               <Tooltip />
-              <Bar dataKey="value" fill="#14B8A6" />
+              <ReferenceLine y={0} stroke="#000" />
+              <Bar dataKey="value">
+                {influencersData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-4 flex items-center justify-center gap-8">
@@ -303,7 +357,7 @@ const MyTrends = () => {
               <span className="text-sm text-gray-600">Internal</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500"></div>
+              <div className="w-4 h-4 bg-blue-600"></div>
               <span className="text-sm text-gray-600">External</span>
             </div>
           </div>
@@ -314,4 +368,3 @@ const MyTrends = () => {
 };
 
 export default MyTrends;
-

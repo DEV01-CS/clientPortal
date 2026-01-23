@@ -394,6 +394,25 @@ def client_dashboard(request):
                 "help": "Make sure your Google Sheet has 'LTP' or 'Input' sheet with data matching your email or client_id. Also ensure admin Google account is connected."
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Apply VR mapping to data if available
+        try:
+            vr_mapping = get_vr_unit_mapping(request.user)
+            if vr_mapping:
+                # Iterate over a copy of items to avoid runtime error during dictionary modification
+                for key, value in list(data.items()):
+                    # Check if key is a unit code (degree) present in mapping
+                    if key in vr_mapping:
+                        header_name = vr_mapping[key]
+                        # Add the readable header name to data
+                        data[header_name] = value
+                        # Also add normalized version (lowercase with underscores)
+                        norm_key = header_name.lower().replace(' ', '_').replace('-', '_')
+                        data[norm_key] = value
+        except Exception as e:
+            if settings.DEBUG:
+                logger.warning(f"Failed to apply VR mapping: {str(e)}") 
+                #end VR mapping
+
         return Response({"data": data}, status=status.HTTP_200_OK)
     except AdminGoogleOAuthToken.DoesNotExist:
         return Response({
@@ -685,6 +704,70 @@ def upload_document(request):
         try:
             sheets_service = get_admin_sheets_service()
             
+            # Check if 'Documents' sheet exists
+            spreadsheet = sheets_service.spreadsheets().get(spreadsheetId=settings.GOOGLE_SHEET_ID).execute()
+            sheets = spreadsheet.get('sheets', [])
+            sheet_exists = any(s.get('properties', {}).get('title') == 'Documents' for s in sheets)
+            
+            if not sheet_exists:
+                # Create 'Documents' sheet
+                body = {
+                    'requests': [{
+                        'addSheet': {
+                            'properties': {
+                                'title': 'Documents'
+                            }
+                        }
+                    }]
+                }
+                sheets_service.spreadsheets().batchUpdate(
+                    spreadsheetId=settings.GOOGLE_SHEET_ID,
+                    body=body
+                ).execute()
+                
+                # Add headers to the new sheet
+                headers = ['client_id', 'name', 'type', 'property', 'date', 'uploaded_by', 'file_id', 'description']
+                sheets_service.spreadsheets().values().update(
+                    spreadsheetId=settings.GOOGLE_SHEET_ID,
+                    range='Documents!A1',
+                    valueInputOption='RAW',
+                    body={'values': [headers]}
+                ).execute()
+            else:
+                # Check if headers exist and add them if missing (for new sheets)
+                try:
+                    header_check = sheets_service.spreadsheets().values().get(
+                        spreadsheetId=settings.GOOGLE_SHEET_ID,
+                        range='Documents!A1:A1'
+                    ).execute()
+                    
+                    # Check if A1 contains 'client_id'
+                    is_header_present = False
+                    if 'values' in header_check and header_check['values']:
+                        if str(header_check['values'][0][0]).strip().lower() == 'client_id':
+                            is_header_present = True
+                    
+                    if not is_header_present:
+                        # Check if row 1 is empty (to avoid overwriting existing data)
+                        row1_check = sheets_service.spreadsheets().values().get(
+                            spreadsheetId=settings.GOOGLE_SHEET_ID,
+                            range='Documents!A1:Z1'
+                        ).execute()
+                        
+                        if 'values' not in row1_check:
+                            # Sheet is empty, add headers
+                            headers = ['client_id', 'name', 'type', 'property', 'date', 'uploaded_by', 'file_id', 'description']
+                            sheets_service.spreadsheets().values().append(
+                                spreadsheetId=settings.GOOGLE_SHEET_ID,
+                                range='Documents!A1',
+                                valueInputOption='RAW',
+                                insertDataOption='INSERT_ROWS',
+                                body={'values': [headers]}
+                            ).execute()
+                except Exception as header_e:
+                    if settings.DEBUG:
+                        logger.warning(f"Header check failed: {str(header_e)}")
+            
             # Get current date
             upload_date = timezone.now().strftime('%m/%d/%Y')
             
@@ -789,6 +872,41 @@ def upload_document(request):
             "message": "Failed to upload document. Please ensure you have write permissions to Google Drive."
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_document(request, file_id):
+    """Download a document from admin's Google Drive, acting as a proxy."""
+    try:
+        drive_service = get_admin_drive_service()
+
+        # 1. Get file metadata to get name and mimeType
+        file_metadata = drive_service.files().get(
+            fileId=file_id,
+            fields='name, mimeType'
+        ).execute()
+        
+        file_name = file_metadata.get('name', 'download')
+        mime_type = file_metadata.get('mimeType', 'application/octet-stream')
+
+        # 2. Get file content
+        file_content_request = drive_service.files().get_media(fileId=file_id)
+        file_content = file_content_request.execute()
+        
+        # 3. Create and return response
+        response = HttpResponse(file_content, content_type=mime_type)
+        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        return response
+
+    except AdminGoogleOAuthToken.DoesNotExist:
+        return Response({"error": "Admin Google account not connected."}, status=status.HTTP_401_UNAUTHORIZED)
+    except HttpError as e:
+        if e.resp.status == 404:
+            return Response({"error": "File not found in Google Drive."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": f"Google Drive API error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(f"Document download error: {str(e)}\n{traceback.format_exc()}")
+        return Response({"error": "Failed to download document."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1479,12 +1597,12 @@ def get_vr_unit_mapping(user):
 
 
 def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='client_id', sheet_name='LTP'):
-    """Get data from LTP sheet -uses row 2 as headers (row 1 has degrees)
+    """Get data from LTP sheet - uses row 1 as degrees and row 2 as headers
     
     Args:
         user: Django User object
         row_identifier: Value to search for (client_id, email, etc.)
-        identifier_column: Column name to search in ('client_id' or 'Email')
+        identifier_column: Column name to search in ('client_id' or 'email')
         sheet_name: Sheet name (default: 'LTP')
     
     Returns:
@@ -1494,100 +1612,95 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         service = get_admin_sheets_service()
         sheet = service.spreadsheets()
         
-        # Read LTP sheet - row 1 has degrees, row 2 has headers
+        # Read entire sheet to get all rows
         result = sheet.values().get(
             spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range=f'{sheet_name}!A:Z'
+            range=f"'{sheet_name}'!A:ZZ"  # Read more columns to be safe
         ).execute()
         
         rows = result.get('values', [])
         if not rows or len(rows) < 2:
             return None
         
-        # Row 2 (index 1) contains headers
-        headers = rows[1] if len(rows) > 1 else []
+        # Row 1 (index 0) contains degrees, Row 2 (index 1) contains headers
+        degrees = rows[0]
+        headers = rows[1]
+        
         if not headers:
             return None
         
         # Find the column index for identifier (client_id or email)
         identifier_col_index = None
-        available_headers = [str(h).strip() for h in headers]  # For debugging
         
         for idx, header in enumerate(headers):
             header_lower = str(header).strip().lower()
-            # Support variations: client_id, Client ID, client_ID, etc.
             if identifier_column.lower() == 'client_id':
                 if header_lower in ['client_id', 'client id', 'clientid']:
                     identifier_col_index = idx
                     break
             elif identifier_column.lower() in ['email', 'email']:
-                # Support variations: Email (capitalized), email, E-mail, e-mail, etc.
-                # Match exact "Email" or any variation containing 'email'
                 if header_lower in ['email', 'e-mail', 'e_mail', 'e mail'] or 'email' in header_lower:
                     identifier_col_index = idx
                     break
         
         if identifier_col_index is None:
-            # Return None with debug info - don't raise exception, just return None
-            # The calling function will handle the error
             return None
         
         # Normalize the search identifier
         if identifier_column.lower() == 'email':
-            # For email, use exact case-insensitive match
             search_id = str(row_identifier).strip().lower()
         else:
-            # For client_id, remove # and normalize
             search_id = str(row_identifier).replace('#', '').strip().lower()
         
-        # Find matching row - start from row 3 (index 2) since row 1 has degrees, row 2 has headers
+        # Find matching row - start from row 3 (index 2)
         for idx, row in enumerate(rows[2:], start=3):
+            # Pad row with empty strings if it's shorter than headers
             while len(row) < len(headers):
                 row.append('')
             
             if len(row) > identifier_col_index:
                 row_identifier_value = str(row[identifier_col_index]).strip()
                 
-                # For email: exact case-insensitive match
+                match_found = False
                 if identifier_column.lower() == 'email':
-                    row_value_lower = row_identifier_value.lower()
-                    if row_value_lower == search_id:
-                        # Found matching row, create dictionary with header names
-                        row_data = {}
-                        for col_idx, header in enumerate(headers):
-                            if col_idx < len(row):
-                                header_name = str(header).strip()
-                                value = str(row[col_idx]).strip() if row[col_idx] else ''
-                                # Use header name as key (normalize to lowercase with underscores)
-                                key = header_name.lower().replace(' ', '_').replace('-', '_')
-                                row_data[key] = value
-                                # Also keep original header name for flexibility
-                                row_data[header_name] = value
-                        
-                        row_data['_row_number'] = idx
-                        return row_data
+                    if row_identifier_value.lower() == search_id:
+                        match_found = True
                 else:
-                    # For client_id: match with/without #
                     row_id_clean = row_identifier_value.replace('#', '').strip().lower()
                     if (row_id_clean == search_id or 
                         row_identifier_value.lower() == str(row_identifier).strip().lower()):
-                        # Found matching row, create dictionary with header names
-                        row_data = {}
-                        for col_idx, header in enumerate(headers):
-                            if col_idx < len(row):
-                                header_name = str(header).strip()
-                                value = str(row[col_idx]).strip() if row[col_idx] else ''
-                                # Use header name as key (normalize to lowercase with underscores)
-                                key = header_name.lower().replace(' ', '_').replace('-', '_')
-                                row_data[key] = value
-                                # Also keep original header name for flexibility
-                                row_data[header_name] = value
+                        match_found = True
+
+                if match_found:
+                    # Found matching row, create dictionary
+                    row_data = {}
+                    for col_idx, value in enumerate(row):
+                        value_str = str(value).strip() if value else ''
                         
-                        row_data['_row_number'] = idx
-                        return row_data
+                        # Add by degree (from row 1)
+                        if col_idx < len(degrees) and degrees[col_idx]:
+                            degree_key = str(degrees[col_idx]).strip()
+                            if degree_key:
+                                row_data[degree_key] = value_str
+                        
+                        # Add by header name (from row 2)
+                        if col_idx < len(headers) and headers[col_idx]:
+                            header_name = str(headers[col_idx]).strip()
+                            if header_name:
+                                # Add original header name
+                                row_data[header_name] = value_str
+                                # Add normalized header name
+                                norm_key = header_name.lower().replace(' ', '_').replace('-', '_')
+                                row_data[norm_key] = value_str
+                    
+                    row_data['_row_number'] = idx
+                    return row_data
         
         return None
     except HttpError as e:
+        # Check if sheet doesn't exist
+        if 'Unable to parse range' in str(e):
+            return None
         raise Exception(f"Google Sheets API error: {str(e)}")
     except Exception as e:
         raise Exception(f"Error getting LTP data: {str(e)}")

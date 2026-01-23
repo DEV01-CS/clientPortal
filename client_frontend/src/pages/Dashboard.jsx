@@ -13,10 +13,12 @@ import { fetchDashboardData } from "../services/dashboardService";
 import { fetchDocuments } from "../services/documentService";
 import LocationMap from "../components/LocationMap";
 import DocumentUploadModal from "../components/DocumentUploadModal";
+// Assuming a central API client setup for making authenticated requests
+import api from "../services/api";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const userName = user?.name || "Lucy";
+  const userName = user?.name || "N/A";
   const [messages, setMessages] = useState([
     {
       text: "Hello! I'm here to help you with questions about your service charge, property, lease, and related client services. How can I assist you today?",
@@ -37,15 +39,14 @@ const Dashboard = () => {
     serviceCharge: "£2,551 / Year",
     serviceAmenities: "Concierge",
     locationMap: null, // Lat/Long coordinates from Column P
+    scoreBar: "N/A",
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [documents, setDocuments] = useState([]);
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -71,26 +72,47 @@ const Dashboard = () => {
             return defaultValue;
           };
 
-          const propertySize = getField(['property_size', 'Property Size', 'propertySize'], "710 Sq2");
-          const bedrooms = getField(['bedrooms', 'Bedrooms'], "2");
-          const location = getField(['postcode', 'postal_code', 'Postal Code', 'location', 'Location'], "SW18 1UZ");
-          const locationDesc = getField(['city', 'City', 'location_desc'], "Wandsworth");
-          const serviceCharge = getField(['service_charge', 'Service Charge', 'serviceCharge'], "£2,551");
-          const serviceAmenities = getField(['service_amenities', 'Services & Amenities', 'amenities'], "Concierge");
-          const city = getField(['city', 'City', 'location_desc'], "Wandsworth");
+          const propertySize = getField(['property_size', 'Property Size', 'propertySize', '1"02'], "N/A");
+          const bedrooms = getField(['bedrooms', 'Bedrooms'], "N/A");
+          const location = getField(['postcode', 'postal_code', 'Postal Code', 'location', 'Location', '1"03'], "N/A");
+          const locationDesc = getField(['city', 'City', 'location_desc', '1"01', 'Address Box'], "N/A");
+          const serviceCharge = getField(['service_charge', 'Service Charge', 'serviceCharge', '1"04'], "N/A");
+          const serviceAmenities = getField(['service_amenities', 'Services & Amenities', 'amenities', '1"05'], "N/A");
           const state = getField(['state', 'State', 'region', 'Region'], "");
           const locationMap = getField(['location_map', 'Location Map', 'locationMap', 'location_map'], null);
+          
+          // ownership fields
+          const ownershipLandlord = getField(['ownership_landlord', 'Ownership - Landlord', 'landlord','1"07'], "N/A");
+          const ownershipLeaseholder = getField(['ownership_leaseholder', 'Ownership - Leaseholder', 'leaseholder','1"06'], "N/A");
+          const ownershipManagingAgents = getField(['ownership_managing_agents', 'Ownership - Managing Agents', 'managing_agents','1"08'], "N/A");
+          const ownershipResidentsAssociation = getField(['ownership_residents_association', 'Ownership - Residents Association', 'residents_association','1"09'], "N/A");
+
+          //keydate fields
+          const keydateleaseTerm = getField(['Key Dates - Lease Term', 'lease_term','1"10'], "N/A");
+          const keydateServiceChargeYearEnd = getField(['Key Dates - Service Charge Year End', 'service_charge_year_end','1"11'], "N/A");
+          const keydatePaymentDates = getField(['Key Dates - Payment Dates', 'payment_dates','1"12'], "N/A");
+
+          //score-bar
+          const scoreBar = getField(['Your Score', 'your_score','1"13'], "N/A");
 
           setDashboardData({
             propertySize: propertySize,
             bedrooms: bedrooms ? `${bedrooms} Bedroom${bedrooms !== '1' ? 's' : ''}` : "2 Bedroom",
             location: location,
             locationDesc: locationDesc,
-            city: city,
+            city: locationDesc,
             state: state,
             serviceCharge: serviceCharge.includes('/') ? serviceCharge : `£${serviceCharge} / Year`,
             serviceAmenities: serviceAmenities,
             locationMap: locationMap,
+            ownershipLandlord: ownershipLandlord,
+            ownershipLeaseholder: ownershipLeaseholder,
+            ownershipManagingAgents: ownershipManagingAgents,
+            ownershipResidentsAssociation: ownershipResidentsAssociation, 
+            keydateleaseTerm: keydateleaseTerm,
+            keydateServiceChargeYearEnd: keydateServiceChargeYearEnd,
+            keydatePaymentDates: keydatePaymentDates,
+            scoreBar: scoreBar,
           });
         }
       } catch (error) {
@@ -119,7 +141,7 @@ const Dashboard = () => {
         console.error("Error fetching documents:", error);
         // Check if it's an admin OAuth error
         if (error.response?.status === 401 && error.response?.data?.error === "Admin Google account not connected") {
-          console.warn("⚠️ Admin Google account not connected. Please connect via: http://localhost:8000/api/sheets/oauth/admin/test/");
+          console.warn("Admin Google account not connected");
         }
       }
     }
@@ -127,6 +149,35 @@ const Dashboard = () => {
 
   const handleDocumentUploadSuccess = () => {
     loadDocuments(); // Reload documents after successful upload
+  };
+
+  const handleDocumentDownload = async (doc) => {
+    if (!doc.drive_file?.id) {
+      console.error("No file ID available for download.");
+      alert("This document cannot be downloaded as it has no associated file.");
+      return;
+    }
+
+    try {
+      // This assumes your `api` service is set up to handle blob responses
+      // and includes authentication tokens.
+      const response = await api.get(`/sheets/documents/download/${doc.drive_file.id}/`, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName = doc.name || doc.drive_file.name || 'download';
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      alert("Failed to download the document. It may have been removed or there was a network issue.");
+    }
   };
 
   const handleSendMessage = async () => {
@@ -200,7 +251,7 @@ const Dashboard = () => {
         </h1>
 
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg text-sm cursor-pointer">
-          {dashboardData.city}{dashboardData.state ? `, ${dashboardData.state}` : ''} <span>▼</span>
+          {dashboardData.city}{dashboardData.state ? `, ${dashboardData.state}` : ''}
         </div>
       </div>
 
@@ -242,41 +293,44 @@ const Dashboard = () => {
         {/* LEFT COLUMN - Ownership and Key Dates */}
         <div className="space-y-6">
           <Card title="Ownership">
-            <KeyValue label="Leaseholder" value="Lucy Clark" />
-            <KeyValue label="Landlord" value="Star Building Ltd." />
-            <KeyValue label="Managing Agent" value="London Building Ltd." />
-            <KeyValue label="Residents Association" value="Yes" />
+            <KeyValue label="Leaseholder" value={dashboardData.ownershipLeaseholder} />
+            <KeyValue label="Landlord" value={dashboardData.ownershipLandlord} />
+            <KeyValue label="Managing Agent" value={dashboardData.ownershipManagingAgents} />
+            <KeyValue label="Residents Association" value={dashboardData.ownershipResidentsAssociation} />
           </Card>
 
           <Card title="Key Dates">
-            <KeyValue label="Lease Term" value="90 Years Remaining" />
-            <KeyValue label="Service Charge Year End" value="31st December" />
-            <KeyValue label="Payment Dates" value="1st January & 30th June" />
+            <KeyValue label="Lease Term" value={dashboardData.keydateleaseTerm} />
+            <KeyValue label="Service Charge Year End" value={dashboardData.keydateServiceChargeYearEnd} />
+            <KeyValue label="Payment Dates" value={dashboardData.keydatePaymentDates}/>
           </Card>
-        </div>
+        </div>  
 
         {/* RIGHT COLUMN - Score Bar (spans 3 columns) */}
         <div className="lg:col-span-3 rounded-lg shadow-sm">
-          <div className="bg-gray-100 rounded-lg p-2 mb-4">
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Your Score: <span className="text-orange-500">High</span>
+          <div className="bg-gray-100 rounded-lg p-2 mb-6">
+            <h3 className="font-semibold text-gray-900 m-2">
+              Your Score: <span className="text-orange-500">{dashboardData.scoreBar}</span>
             </h3>
 
             <div className="flex rounded-full overflow-hidden h-10 mb-3 relative">
               <Bar color="bg-green-500" label="VERY LOW" />
               <Bar color="bg-teal-400" label="LOW" />
               <Bar color="bg-yellow-400" label="MEDIUM" />
-              <Bar color="bg-orange-500" label="HIGH" active />
+              <Bar color="bg-orange-500" label="HIGH" />
               <Bar color="bg-red-500" label="VERY HIGH" />
-              {/* Arrow indicator on the active bar (HIGH = 4th bar, center at 70%) */}
-              <div className="absolute left-[70%] top-0 bottom-0 flex items-center justify-center pointer-events-none z-10 ">
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-white-500 mt-8" />
+              {/* Arrow indicator on the active bar */}
+              <div 
+                className="absolute top-0 bottom-0 flex items-center justify-center pointer-events-none z-10 transition-all duration-500"
+                style={{ left: getScorePosition(dashboardData.scoreBar) }}
+              >
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-white mt-8"></div>
               </div>
             </div>
 
             <div className="flex justify-center items-center mb-6">
               <p className="text-sm text-gray-600">
-                Your service charge is <span className="text-orange-500 font-medium">high</span> compared to other similar properties
+                Your service charge is <span className="text-orange-500 font-medium">{dashboardData.scoreBar}</span> compared to other similar properties
               </p>
             </div>
           </div>
@@ -319,7 +373,7 @@ const Dashboard = () => {
               <Card>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-gray-900">Documents</h3>
-                  <button 
+                  <button
                     onClick={() => setIsDocumentModalOpen(true)}
                     className="bg-sidebar text-white px-3 py-1 rounded-md text-sm hover:bg-teal-600 transition-colors"
                   >
@@ -332,14 +386,10 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   documents.map((doc, index) => (
-                    <DocItem 
-                      key={index} 
+                    <DocItem
+                      key={index}
                       name={doc.name || 'Untitled Document'}
-                      onClick={() => {
-                        if (doc.drive_file?.webViewLink) {
-                          window.open(doc.drive_file.webViewLink, '_blank');
-                        }
-                      }}
+                      onClick={() => handleDocumentDownload(doc)}
                     />
                   ))
                 )}
@@ -394,6 +444,20 @@ const Dashboard = () => {
   );
 };
 
+const getScorePosition = (score) => {
+  if (!score || score === "N/A") return "50%";
+  const s = score.toString().toUpperCase().trim();
+  
+  switch (s) {
+    case "VERY LOW": return "10%";
+    case "LOW": return "30%";
+    case "MEDIUM": return "50%";
+    case "HIGH": return "70%";
+    case "VERY HIGH": return "90%";
+    default: return "50%";
+  }
+};
+
 /* -------------------- Components -------------------- */
 
 const InfoCard = ({ icon: Icon, title, value, desc }) => (
@@ -426,7 +490,7 @@ const Bar = ({ color, label, active }) => (
 );
 
 const DocItem = ({ name, onClick }) => (
-  <div 
+  <div
     onClick={onClick}
     className="flex items-center gap-2 text-xs hover:bg-gray-100 p-1 rounded cursor-pointer"
   >

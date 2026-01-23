@@ -9,11 +9,10 @@ RELEVANT_KEYWORDS = [
     "landlord", "landlords", "managing agent", "managing agents", "residents association",
     "budget", "budget report", "invoice", "invoices", "payment", "payments", "charge",
     "amenities", "concierge", "maintenance", "repair", "repairs", "building", "buildings",
-    "location", "wandsworth", "sw18", "property size", "bedroom", "bedrooms",
-    "lease term", "payment dates", "year end", "score", "comparison", "trends",
-    "documents", "docs", "report", "reports", "document", "pdf", "monthly report",
-    "what is", "how much", "when is", "where is", "explain", "tell me about",
-    "help", "assistance", "question", "questions"
+    "location", "wandsworth", "sw18", "property size", "bedroom", "bedrooms", "trends",
+    "lease term", "payment dates", "year end", "score", "comparison", "documents", "docs", 
+    "report", "reports", "document", "pdf", "monthly report", "what is", "how much", "when is",
+    "where is", "explain", "tell me about", "help", "assistance", "question", "questions"
 ]
 
 # Greeting keywords that should be accepted
@@ -30,7 +29,6 @@ OFF_TOPIC_KEYWORDS = [
     "stock", "stocks", "crypto", "bitcoin", "shopping", "buy", "sell",
     "travel", "vacation", "hotel", "restaurant", "food", "recipe"
 ]
-
 
 def is_greeting(message):
     """Check if the message is a greeting"""
@@ -62,11 +60,9 @@ def is_relevant_message(message):
 def generate_response(user_message, client_data=None):
     """
     Generate a response based on the user's message.
-    
     Args:
         user_message: The user's input message
         client_data: Optional dictionary containing client-specific data
-    
     Returns:
         Response string
     """

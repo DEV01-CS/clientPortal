@@ -8,7 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import MyTrends from "./pages/MyTrends";
 import MarketComparison from "./pages/MarketComparison";
-// import MarketInfluences from "./pages/MarketInfluences";
+import MarketInfluences from "./pages/MarketInfluences";
 import MyLease from "./pages/MyLease";
 import MyExpert from "./pages/MyExpert";
 import MyAccount from "./pages/MyAccount";
@@ -35,7 +35,7 @@ const AppLayout = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/my-trends" element={<MyTrends />} />
             <Route path="/market-comparison" element={<MarketComparison />} />
-            {/* <Route path="/market-influences" element={<MarketInfluences />} /> */}
+            <Route path="/market-influences" element={<MarketInfluences />} />
             <Route path="/my-lease" element={<MyLease />} />
             <Route path="/my-expert" element={<MyExpert />} />
             <Route path="/my-account" element={<MyAccount />} />

@@ -128,7 +128,6 @@ const MarketComparison = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
             <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span>
-            <ChevronDown className="w-4 h-4 text-gray-500" />
           </div>
           <button className="px-4 py-2 bg-sidebar text-white rounded-lg font-medium hover:bg-teal-600 transition-colors">
             SCUK Rating System

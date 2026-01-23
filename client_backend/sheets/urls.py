@@ -3,6 +3,7 @@ from .views import (
     client_dashboard, 
     client_documents,
     upload_document,
+    download_document,
     test_google_sheets_connection,
     test_google_drive_connection,
     chatbot_message,
@@ -35,6 +36,7 @@ urlpatterns = [
     path('dashboard/', client_dashboard, name='client_dashboard'),
     path('documents/', client_documents, name='client_documents'),
     path('documents/upload/', upload_document, name='upload_document'),
+    path('documents/download/<str:file_id>/', download_document, name='download_document'),
     path('test-sheets/', test_google_sheets_connection, name='test_sheets'),
     path('test-drive/', test_google_drive_connection, name='test_drive'),
     path('chatbot/', chatbot_message, name='chatbot_message'),
@@ -43,4 +45,3 @@ urlpatterns = [
     path('test-client/<str:client_id>/', test_client_data, name='test_client_data'),
     path('test-client/', test_client_data, name='test_client_data_query'),
 ]
-

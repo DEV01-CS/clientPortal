@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, X } from "lucide-react";
+import { fetchDashboardData } from "../services/dashboardService";
 
 const MyExpert = () => {
     const tabs = [
@@ -13,126 +14,102 @@ const MyExpert = () => {
     ];
 
     const [activeTab, setActiveTab] = useState(0);
+    const [expertData, setExpertData] = useState({});
+    const [loading, setLoading] = useState(true);
 
-    // Data for each tab
-    const tabData = {
-        0: {
-            // Staff
-            budgetRating: { value: "Low", activeIndex: 1 },
-            buildingRequirement: { value: "Low", activeIndex: 1 },
-            approved: true,
-            notes: [
-                "The staffing needs for your building are low, as your building has a 12-hour concierge, but no leisure staff or on-site team.",
-                "Your budget for staff service charge aligns with the requirements of your building.",
-                "The budget may be impacted by staff employment costs if staff are paid above market wages, agency staff are used regularly or VAT is due.",
-            ],
-            recommendations: [
-                "To reduce the impact of staff employment on your service charge the following actions could be considered:",
-                "Reduce reliance on temporary agency staff.",
-                "Freeholder directly employs staff so VAT is not due. This is not always possible.",
-                "Improve efficiency streamlining roles.",
-                "Reduce reliance on overtime by improving shift planning.",
-            ],
-        },
-        1: {
-            // Contracts & Services
-            budgetRating: { value: "Medium", activeIndex: 2 },
-            buildingRequirement: { value: "Medium", activeIndex: 2 },
-            approved: true,
-            notes: [
-                "The contracts and maintenance needs for your building are average, as your building has a communal heating system, but no lift or complex leisure facilities.",
-                "Your budget for contracts & maintenance service charges aligns with the requirements of your building.",                
-                "The budget will be impacted by the age of the equipment as your building is more than 30 years out and majority of plant equipment has a lifespan of 20 to 25 years. The older the equipment the higher the requirement for reactive maintenance. Also, over-frequent cleaning or ground works, legacy contracts that have not been retender or the overuse of emergency call outs will have a negative impact on expenditure.",
-            ],
-            recommendations: [
-                "To reduce the impact of contracts and maintenance on your service charge the following actions could be considered:",
-                " Reduce or eliminate non-essential contracts. For example, reduce window cleaning from four times a year to twice.",
-                " Retender existing contracts to ensure they are offering a good quality service for a competitive price.",
-                " Ensure all equipment and plant is replaced at the end of its lifespan to retain efficiency and reduce reactive maintenance and repairs expenditure.",
-                " Ensure all planned maintenance is completed by a qualified contractor and well documented.",
-            ],
-        },
-        2: {
-            // Compliance
-            budgetRating: { value: "High", activeIndex: 3 },
-            buildingRequirement: { value: "Medium", activeIndex: 2 },
-            approved: false,
-            notes: [
-                "Compliance costs are high due to regulatory requirements and safety standards.",
-                "Your building meets medium-level requirements for compliance standards.",
-                "Regular compliance audits are essential to maintain standards and avoid penalties.",
-            ],
-            recommendations: [
-                "To manage compliance costs effectively:",
-                "Schedule regular compliance audits to identify issues early.",
-                "Maintain detailed records to streamline audit processes.",
-                "Invest in training for staff on compliance requirements.",
-                "Consider compliance software to track and manage requirements efficiently.",
-            ],
-        },
-        3: {
-            // Professional Fees
-            budgetRating: { value: "Low", activeIndex: 1 },
-            buildingRequirement: { value: "Low", activeIndex: 1 },
-            approved: true,
-            notes: [
-                "Professional fees are currently at a low level.",
-                "Regular review of professional service providers is recommended.",
-            ],
-            recommendations: [
-                "To maintain cost-effective professional services:",
-                "Compare quotes from multiple service providers.",
-                "Review service agreements annually.",
-            ],
-        },
-        4: {
-            // Insurance
-            budgetRating: { value: "Medium", activeIndex: 2 },
-            buildingRequirement: { value: "Medium", activeIndex: 2 },
-            approved: true,
-            notes: [
-                "Insurance costs are at a medium level.",
-                "Regular review of insurance coverage is essential.",
-            ],
-            recommendations: [
-                "To optimize insurance costs:",
-                "Review insurance policies annually.",
-                "Compare quotes from multiple insurers.",
-            ],
-        },
-        5: {
-            // Utilities
-            budgetRating: { value: "Low", activeIndex: 1 },
-            buildingRequirement: { value: "Low", activeIndex: 1 },
-            approved: true,
-            notes: [
-                "Utility costs are well managed.",
-                "Energy efficiency measures are in place.",
-            ],
-            recommendations: [
-                "To further reduce utility costs:",
-                "Implement energy-saving measures.",
-                "Monitor usage patterns regularly.",
-            ],
-        },
-        6: {
-            // Reserve Fund
-            budgetRating: { value: "Medium", activeIndex: 2 },
-            buildingRequirement: { value: "Medium", activeIndex: 2 },
-            approved: false,
-            notes: [
-                "Reserve fund is at an appropriate level.",
-                "Regular contributions are essential for future maintenance.",
-            ],
-            recommendations: [
-                "To maintain adequate reserve fund:",
-                "Ensure regular contributions are made.",
-                "Review fund requirements annually.",
-            ],
-        },
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const response = await fetchDashboardData();
+                if (response.data) {
+                    setExpertData(response.data);
+                }
+            } catch (error) {
+                console.error("Error loading expert data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
+    }, []);
+
+    const getData = (key) => {
+        if (!key || !expertData) return "Data not available";
+        return expertData[key] || expertData[key.replace('"', '”')] || expertData[key.replace('”', '"')] || "Data unavailable";
     };
 
-    const currentData = tabData[activeTab];
+    const getRatingData = (ratingValue) => {
+        if (!ratingValue || ratingValue === "Data unavailable") {
+            return { value: "N/A", activeIndex: -1 };
+        }
+        const value = ratingValue.trim();
+        const labels = ["VERY LOW", "LOW", "MEDIUM", "HIGH", "VERY HIGH"];
+        const activeIndex = labels.findIndex(l => l === value.toUpperCase());
+        return { value, activeIndex };
+    };
+
+    const parseNotesAndRecs = (text) => {
+        if (!text || text === 'Data not available') {
+            return { notes: [], recommendations: [] };
+        }
+
+        // Find "Recommendations" header (case-insensitive, optional colon)
+        // Looks for pattern preceded by start-of-line, newline, or dot-space
+        const headerRegex = /(?:^|[\r\n]+|\.\s+)(Recc?ommendations?)(?:\s*:)?(?:\s|$)/i;
+        const match = text.match(headerRegex);
+
+        let notesText = text;
+        let recsText = '';
+        if (match) {
+            let splitIdx = match.index;
+            // If match starts with dot, include it in notes
+            if (match[0].trim().startsWith('.')) {
+                splitIdx += 1;
+            }
+            notesText = text.substring(0, splitIdx).trim();
+            recsText = text.substring(match.index + match[0].length).trim();
+        }
+
+        // Split by newline or dot followed by space to get list items
+        const splitItems = (str) => str.split(/(?:[\r\n]+|\.\s+)/).map(s => s.trim()).filter(s => s.length > 0);
+
+        const notes = splitItems(notesText);
+        const recommendations = splitItems(recsText);
+        return { notes, recommendations };
+    };
+
+    const tabMapping = {
+        0: { notesKey: '5"06', budgetRatingKey: '5"07', buildingRequirementKey: '5"08', approvedKey: '5"09' },
+        1: { notesKey: '5"10', budgetRatingKey: '5"11', buildingRequirementKey: '5"12', approvedKey: '5"13' },
+        2: { notesKey: '5"14', budgetRatingKey: '5"15', buildingRequirementKey: '5"16', approvedKey: '5"17' },
+        3: { notesKey: '5"18', budgetRatingKey: '5"19', buildingRequirementKey: '5"20', approvedKey: '5"21' },
+        4: { notesKey: '5"22', budgetRatingKey: '5"23', buildingRequirementKey: '5"24', approvedKey: '5"25' },
+        5: { notesKey: '5"26', budgetRatingKey: '5"27', buildingRequirementKey: '5"28', approvedKey: '5"29' },
+        6: { notesKey: '5"30', budgetRatingKey: '5"31', buildingRequirementKey: '5"32', approvedKey: '5"33' },
+    };
+
+    const getTabData = (tabIndex) => {
+        const mapping = tabMapping[tabIndex];
+        if (!mapping) return { notes: [], recommendations: [], budgetRating: { value: 'N/A', activeIndex: -1 }, buildingRequirement: { value: 'N/A', activeIndex: -1 }, approved: false, approvedValue: "N/A" };
+
+        const { notes, recommendations } = parseNotesAndRecs(getData(mapping.notesKey));
+        const budgetRating = getRatingData(getData(mapping.budgetRatingKey));
+        const buildingRequirement = getRatingData(getData(mapping.buildingRequirementKey));
+        const approvedValue = getData(mapping.approvedKey);
+        const approved = approvedValue && /^(true|yes|approved|pass|Green|satisfactory|Good)$/i.test(String(approvedValue).trim());
+
+        return { notes, recommendations, budgetRating, buildingRequirement, approved, approvedValue };
+    };
+
+    const currentData = getTabData(activeTab);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-white">
+                <div className="text-gray-600">Loading expert analysis...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white min-h-screen p-6 font-inter">
@@ -143,12 +120,17 @@ const MyExpert = () => {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
                         <span className="text-sm font-medium text-gray-700">
-                            Wandsworth, SW18
+                            {getData('5"01') || 'Wandsworth, SW18'}
                         </span>
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
                     </div>
 
-                    <button className="px-4 py-2 bg-sidebar text-white rounded-lg text-sm font-medium">
+                    <button
+                        onClick={() => {
+                            const link = getData('5"02');
+                            if (link && link !== "Data not available") window.open(link, '_blank');
+                        }}
+                        className="px-4 py-2 bg-sidebar text-white rounded-lg text-sm font-medium"
+                    >
                         SCUK Rating System
                     </button>
                 </div>
@@ -188,7 +170,8 @@ const MyExpert = () => {
 
                 {/* Approval */}
                 <div className="bg-white rounded-lg p-6 shadow-sm flex flex-col items-center justify-center">
-                    <h3 className="font-semibold mb-4 text-gray-900">Approval</h3>
+                    <h2 className="font-bold mb-2 text-gray-900">Approval</h2>
+                    <hr className="w-full border-t border-black mb-8" />
                     {currentData.approved ? (
                         <div className="w-28 h-28 bg-green-500/10 rounded-full flex items-center justify-center">
                             <svg
@@ -202,10 +185,14 @@ const MyExpert = () => {
                             </svg>
                         </div>
                     ) : (
-                        <div className="w-28 h-28 bg-red-500/10 rounded-full flex items-center justify-center">
+        
+                        <div className="w-28 h-28 bg-red-300/10 rounded-full flex items-center justify-center">
                             <X className="w-20 h-20 text-red-500" strokeWidth={3} />
                         </div>
                     )}
+                    <p className="mt-4 text-md font-semibold text-grey-900 mb-2 ">
+                        {currentData.approvedValue && currentData.approvedValue !== "Data not available" ? currentData.approvedValue : ""}
+                    </p>
                 </div>
             </div>
 
@@ -214,11 +201,13 @@ const MyExpert = () => {
                 {/* Notes */}
                 <div className="bg-white rounded-lg p-6 shadow-sm">
                     <h3 className="font-semibold mb-3 text-gray-900">Notes</h3>
-                    <ul className="list-disc pl-5 text-sm text-gray-700 space-y-2">
-                        {currentData.notes.map((note, index) => (
-                            <li key={index}>{note}</li>
-                        ))}
-                    </ul>
+                    {currentData.notes && currentData.notes.length > 0 ? (
+                        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-2">
+                            {currentData.notes.map((note, index) => (
+                                <li key={index}>{note}</li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-sm text-gray-500">No notes available.</p>}
                 </div>
 
                 {/* Recommendation */}
@@ -226,14 +215,18 @@ const MyExpert = () => {
                     <h3 className="font-semibold mb-3 text-gray-900">
                         Recommendation
                     </h3>
-                    <p className="text-sm text-gray-700 mb-3">
-                        {currentData.recommendations[0]}
-                    </p>
-                    <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-2">
-                        {currentData.recommendations.slice(1).map((rec, index) => (
-                            <li key={index}>{rec}</li>
-                        ))}
-                    </ol>
+                    {currentData.recommendations && currentData.recommendations.length > 0 ? (
+                        <>
+                            <p className="text-sm text-gray-700 mb-3">
+                                {currentData.recommendations[0]}
+                            </p>
+                            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-2">
+                                {currentData.recommendations.slice(1).map((rec, index) => (
+                                    <li key={index}>{rec}</li>
+                                ))}
+                            </ul>
+                        </>
+                    ) : <p className="text-sm text-gray-500">No recommendations</p>}
                 </div>
             </div>
         </div>
