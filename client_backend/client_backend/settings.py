@@ -186,7 +186,9 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
-# ID of the Google Sheet to interact with
+
+
+
 GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID', '16KsD6zG9YtOXnrVXg0oRAdie5KBNUfxcbvrTBMFTEd0')
 
 # Admin email - only this user can connect admin Google account

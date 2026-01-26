@@ -7,9 +7,7 @@ from .views import (
     test_google_sheets_connection,
     test_google_drive_connection,
     chatbot_message,
-    initiate_oauth,
     oauth_callback,
-    check_oauth_status,
     test_client_data,
     admin_oauth_status,
     admin_oauth_initiate,
@@ -21,9 +19,7 @@ from .views import (
 
 urlpatterns = [
     # OAuth endpoints (user-specific)
-    path('oauth/initiate/', initiate_oauth, name='initiate_oauth'),
     path('oauth/callback/', oauth_callback, name='oauth_callback'),
-    path('oauth/status/', check_oauth_status, name='check_oauth_status'),
     
     # Admin OAuth endpoints
     path('oauth/admin/status/', admin_oauth_status, name='admin_oauth_status'),

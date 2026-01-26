@@ -33,37 +33,6 @@ logger = logging.getLogger(__name__)
 
 # OAuth Endpoints
 # In-memory store for OAuth state to user_id mapping
-# This is a fallback when sessions don't work
-oauth_state_store = {}
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def initiate_oauth(request):
-    """Initiate OAuth flow - returns authorization URL"""
-    try:
-        authorization_url, state = get_authorization_url(request.user)
-        
-        # Store in both session (primary) and in-memory store (fallback)
-        request.session['oauth_state'] = state
-        request.session['oauth_user_id'] = request.user.id
-        request.session.save()
-        
-        # Also store in-memory as fallback (expires when server restarts)
-        oauth_state_store[state] = {
-            'user_id': request.user.id,
-            'timestamp': timezone.now()
-        }
-        
-        return Response({
-            "authorization_url": authorization_url,
-            "state": state
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 @api_view(['GET'])
 @permission_classes([AllowAny])  # Changed to AllowAny - Google redirect doesn't include JWT token
 def oauth_callback(request):
@@ -105,100 +74,14 @@ def oauth_callback(request):
                     return redirect(f'/api/sheets/oauth/admin/test-status/?error={quote(error_msg)}')
                 return redirect(f"{frontend_url}/my-account?admin_error={error_msg}")
         
-        # Try to get user_id from multiple sources
-        user_id = None
-        
-        # Method 1: Try session first
-        user_id = request.session.get('oauth_user_id')
-        session_state = request.session.get('oauth_state')
-        
-        # Verify state matches if we have it in session
-        if session_state and session_state != state:
-            return redirect(f"{frontend_url}/my-account?error=invalid_state")
-        
-        # Method 2: Fallback to in-memory store if session doesn't have it
-        if not user_id and state in oauth_state_store:
-            state_data = oauth_state_store.pop(state)  # Remove after use
-            user_id = state_data.get('user_id')
-            if settings.DEBUG:
-                logger.debug(f"Retrieved user_id from in-memory store: {user_id}")
-        
-        if not user_id:
-            if settings.DEBUG:
-                logger.warning(f"OAuth callback - No user_id found. State: {state}, Session keys: {list(request.session.keys())}")
-            return redirect(f"{frontend_url}/my-account?error=session_expired")
-        
-        # Get user object
-        from django.contrib.auth.models import User
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return redirect(f"{frontend_url}/my-account?error=user_not_found")
-        
-        # Exchange code for tokens
-        try:
-            token_obj = exchange_code_for_tokens(user, code)
-            logger.info(f"OAuth tokens saved successfully for user: {user.email}")
-        except Warning as w:
-            # Handle scope warnings - Google may return additional scopes
-            if 'Scope has changed' in str(w) or 'scope' in str(w).lower():
-                # Try to continue - the warning might be acceptable
-                try:
-                    token_obj = exchange_code_for_tokens(user, code)
-                    logger.info(f"OAuth tokens saved successfully for user: {user.email} (after scope warning)")
-                except Exception as e2:
-                    logger.error(f"Error exchanging code for tokens after scope warning: {str(e2)}", exc_info=True)
-                    return redirect(f"{frontend_url}/my-account?error=token_exchange_failed")
-            else:
-                logger.error(f"Warning during token exchange: {str(w)}", exc_info=True)
-                return redirect(f"{frontend_url}/my-account?error=token_exchange_failed")
-        except Exception as e:
-            error_str = str(e)
-            # Check if it's a scope-related error that we can handle
-            if 'Scope has changed' in error_str or 'scope' in error_str.lower():
-                logger.warning(f"Scope mismatch detected but continuing: {error_str}")
-                # Try one more time - sometimes the token is still valid
-                try:
-                    token_obj = exchange_code_for_tokens(user, code)
-                    logger.info(f"OAuth tokens saved successfully for user: {user.email} (retry after scope error)")
-                except Exception as e2:
-                    logger.error(f"Error exchanging code for tokens: {str(e2)}", exc_info=True)
-                    return redirect(f"{frontend_url}/my-account?error=token_exchange_failed")
-            else:
-                logger.error(f"Error exchanging code for tokens: {error_str}", exc_info=True)
-                return redirect(f"{frontend_url}/my-account?error=token_exchange_failed")
-        
-        # Clear session data
-        if 'oauth_state' in request.session:
-            del request.session['oauth_state']
-        if 'oauth_user_id' in request.session:
-            del request.session['oauth_user_id']
-        request.session.save()
-        
-        return redirect(f"{frontend_url}/my-account?success=connected")
+        # If state is not 'admin_oauth', it's an unrecognized flow (since user flow is removed)
+        return redirect(f"{frontend_url}/my-account?error=invalid_oauth_flow")
+
     except Exception as e:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         error_msg = str(e)
         logger.error(f"OAuth callback error: {error_msg}", exc_info=True)
         return redirect(f"{frontend_url}/my-account?error=oauth_error")
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def check_oauth_status(request):
-    """Check if user has connected their Google account"""
-    try:
-        token_obj = GoogleOAuthToken.objects.get(user=request.user)
-        is_connected = True
-        is_expired = token_obj.is_expired()
-    except GoogleOAuthToken.DoesNotExist:
-        is_connected = False
-        is_expired = False
-    
-    return Response({
-        "is_connected": is_connected,
-        "is_expired": is_expired
-    }, status=status.HTTP_200_OK)
 
 
 # Helper functions using OAuth
@@ -914,6 +797,11 @@ def client_documents(request):
     """Get client documents from Google Sheets and Google Drive"""
     try:
         profile = UserProfile.objects.get(user=request.user)
+        
+        # Skip for new users (default client_id) to avoid 500 errors
+        if not profile.client_id or profile.client_id.startswith(f"client_{request.user.id}"):
+             return Response({"documents": []}, status=status.HTTP_200_OK)
+
         # Use OAuth-based function
         docs = get_clients_documents_oauth(request.user, profile.client_id)
 
@@ -1390,123 +1278,75 @@ def get_client_data_multi_step(user, profile, auto_sync_client_id=True):
     # Default client_id format: "client_X" where X is user.id
     has_default_client_id = profile.client_id and profile.client_id.startswith(f"client_{user.id}")
     
-    # For new users (with default client_id), prioritize email lookup
-    # For existing users (with real client_id from sheet), prioritize client_id lookup
-    if has_default_client_id:
-        # NEW USER FLOW: Email first, then client_id
-        # STEP 1: Try LTP sheet with email (for new users)
+    # Helper to try lookup and handle exceptions
+    def try_lookup(func, *args, **kwargs):
         try:
-            data = get_ltp_data_with_mapped_headers(
-                user,
-                user.email,
-                identifier_column='email',
-                sheet_name='LTP'
-            )
-        except Exception:
-            pass
+            return func(*args, **kwargs)
+        except AdminGoogleOAuthToken.DoesNotExist:
+            raise # Propagate this so view returns 401
+        except Exception as e:
+            # If it's an auth error wrapped in Exception, propagate it
+            if 'invalid_grant' in str(e) or 'unauthorized' in str(e).lower() or 'token' in str(e).lower():
+                raise
+            # Otherwise log and return None to try next method
+            if settings.DEBUG:
+                logger.warning(f"Lookup failed for {func.__name__}: {str(e)}")
+            return None
+
+    def lookup_by_email():
+        # 1. Try LTP sheet (LTP format - Row 1 degrees, Row 2 headers)
+        d = try_lookup(get_ltp_data_with_mapped_headers, user, user.email, identifier_column='email', sheet_name='LTP')
+        if d: return d
         
-        # STEP 2: Try Input sheet with email if not found in LTP
-        if not data:
-            try:
-                data = get_input_sheet_data(
-                    user,
-                    user.email,
-                    identifier_column='email',
-                    sheet_name='Input'
+        # 2. Try LTP sheet (Input format - Row 1 headers) - Fallback if user put headers on Row 1
+        d = try_lookup(get_input_sheet_data, user, user.email, identifier_column='email', sheet_name='LTP')
+        if d: return d
+        
+        # 3. Try Input sheet
+        d = try_lookup(get_input_sheet_data, user, user.email, identifier_column='email', sheet_name='Input')
+        if d:
+            # Check postcode if available
+            if profile.postcode:
+                sheet_postcode = (
+                    d.get('postcode') or d.get('Postcode') or 
+                    d.get('postal_code') or d.get('Postal Code')
                 )
-                # If found by email, also check postcode matches if available
-                if data and profile.postcode:
-                    sheet_postcode = (
-                        data.get('postcode') or 
-                        data.get('Postcode') or 
-                        data.get('postal_code') or
-                        data.get('Postal Code')
-                    )
-                    if sheet_postcode and str(sheet_postcode).strip().upper() != str(profile.postcode).strip().upper():
-                        data = None  # Postcode doesn't match
-            except Exception:
-                pass
+                if sheet_postcode and str(sheet_postcode).strip().upper() != str(profile.postcode).strip().upper():
+                    return None
+            return d
+        return None
+
+    def lookup_by_client_id(cid):
+        if not cid: return None
         
-        # STEP 3: Try with client_id as fallback (in case it was already set)
+        # 1. Try LTP sheet (LTP format)
+        d = try_lookup(get_ltp_data_with_mapped_headers, user, cid, identifier_column='client_id', sheet_name='LTP')
+        if d: return d
+        
+        # 2. Try LTP sheet (Input format)
+        d = try_lookup(get_input_sheet_data, user, cid, identifier_column='client_id', sheet_name='LTP')
+        if d: return d
+        
+        # 3. Try Input sheet
+        d = try_lookup(get_input_sheet_data, user, cid, identifier_column='client_id', sheet_name='Input')
+        if d: return d
+        
+        return None
+
+    # Logic flow
+    if has_default_client_id:
+        # NEW USER: Email first
+        data = lookup_by_email()
+        # Fallback to client_id (unlikely but possible)
         if not data and profile.client_id:
-            try:
-                data = get_ltp_data_with_mapped_headers(
-                    user,
-                    profile.client_id,
-                    identifier_column='client_id',
-                    sheet_name='LTP'
-                )
-            except Exception:
-                pass
-            
-            if not data:
-                try:
-                    data = get_input_sheet_data(
-                        user,
-                        profile.client_id,
-                        identifier_column='client_id',
-                        sheet_name='Input'
-                    )
-                except Exception:
-                    pass
+            data = lookup_by_client_id(profile.client_id)
     else:
-        # EXISTING USER FLOW: Client_id first (faster), then email as fallback
-        # STEP 1: Try LTP sheet with client_id (faster for existing users)
+        # EXISTING USER: Client_id first
         if profile.client_id:
-            try:
-                data = get_ltp_data_with_mapped_headers(
-                    user,
-                    profile.client_id,
-                    identifier_column='client_id',
-                    sheet_name='LTP'
-                )
-            except Exception:
-                pass
-        
-        # STEP 2: Try Input sheet with client_id if not found in LTP
-        if not data and profile.client_id:
-            try:
-                data = get_input_sheet_data(
-                    user,
-                    profile.client_id,
-                    identifier_column='client_id',
-                    sheet_name='Input'
-                )
-            except Exception:
-                pass
-        
-        # STEP 3: Fallback to email lookup if client_id didn't work
+            data = lookup_by_client_id(profile.client_id)
+        # Fallback to email
         if not data:
-            try:
-                data = get_ltp_data_with_mapped_headers(
-                    user,
-                    user.email,
-                    identifier_column='email',
-                    sheet_name='LTP'
-                )
-            except Exception:
-                pass
-            
-            if not data:
-                try:
-                    data = get_input_sheet_data(
-                        user,
-                        user.email,
-                        identifier_column='email',
-                        sheet_name='Input'
-                    )
-                    # If found by email, also check postcode matches if available
-                    if data and profile.postcode:
-                        sheet_postcode = (
-                            data.get('postcode') or 
-                            data.get('Postcode') or 
-                            data.get('postal_code') or
-                            data.get('Postal Code')
-                        )
-                        if sheet_postcode and str(sheet_postcode).strip().upper() != str(profile.postcode).strip().upper():
-                            data = None  # Postcode doesn't match
-                except Exception:
-                    pass
+            data = lookup_by_email()
     
     # STEP 4: Auto-sync client_id from Google Sheet if found (always sync for new users)
     if data and auto_sync_client_id:
