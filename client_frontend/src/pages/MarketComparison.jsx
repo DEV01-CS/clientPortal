@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 
 const MarketComparison = () => {
   const [selectedView, setSelectedView] = useState("comparison"); // 'comparison' or 'analysis'
@@ -383,4 +382,3 @@ const CategoryItem = ({ name }) => (
 );
 
 export default MarketComparison;
-

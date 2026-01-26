@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { fetchDashboardData } from "../services/dashboardService";
 
 const MyExpert = () => {

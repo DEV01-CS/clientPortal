@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchDashboardData } from "../services/dashboardService";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 
@@ -23,11 +22,11 @@ const MarketInfluences = () => {
     loadData();
   }, []);
 
-  const getData = (key) => {
+  const getData = useCallback((key) => {
     if (!marketData) return "";
     // Try exact match, or match with different quote types
     return marketData[key] || marketData[key.replace('"', '”')] || marketData[key.replace('”', '"')] || "";
-  };
+  }, [marketData]);
 
   const renderTextAsList = (text) => {
     if (!text || text === "Data not available") return <p className="text-sm font-medium text-gray-500">Data not available</p>;
@@ -77,7 +76,7 @@ const MarketInfluences = () => {
         console.error("Failed to parse chart data for Headline Budget Impacts", e);
         return [];
     }
-  }, [marketData]);
+  }, [getData]);
 
   if (loading) {
     return (
