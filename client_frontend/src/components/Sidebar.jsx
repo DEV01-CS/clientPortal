@@ -18,8 +18,9 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/AuthContext"; 
 import { useSidebar } from "./SidebarContext";
+import { useNotifications } from "../context/NotificationContext";
 import logoImage from "../logo.png";
 
 const menuTop = [
@@ -49,6 +50,7 @@ const Sidebar = () => {
   const { logout } = useAuth();
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -139,6 +141,7 @@ const Sidebar = () => {
             isCollapsed={isCollapsed}
             isActive={location.pathname === item.path}
             onClick={() => handleNavigation(item.path)}
+            badgeCount={item.label === "Notifications" ? unreadCount : undefined}
           />
         ))}
 
@@ -170,23 +173,34 @@ const Sidebar = () => {
   );
 };
 
-const MenuItem = ({ label, icon: Icon, isActive, onClick, isCollapsed }) => (
+const MenuItem = ({ label, icon: Icon, isActive, onClick, isCollapsed, badgeCount }) => (
   <div
     onClick={onClick}
     className={`flex items-center gap-3 rounded-lg cursor-pointer
       text-sm font-medium transition-all group relative
       ${
-        isCollapsed ? "px-3 py-3 justify-center" : "px-4 py-3"
+        isCollapsed ? "p-3 justify-center" : "px-4 py-3"
       }
       ${
         isActive
           ? "bg-white text-sidebar"
           : "hover:bg-white/20 text-white"
       }`}
-    title={isCollapsed ? label : ""}
+    title={isCollapsed ? label : ""} 
   >
     <Icon className="w-5 h-5 flex-shrink-0" />
-    {!isCollapsed && <span className="whitespace-nowrap">{label}</span>}
+    {!isCollapsed && <span className="whitespace-nowrap flex-1">{label}</span>}
+    
+    {!isCollapsed && badgeCount > 0 && (
+      <span className="h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+        {badgeCount}
+      </span>
+    )}
+
+    {isCollapsed && badgeCount > 0 && (
+      <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-sidebar"></span>
+    )}
+
     {isCollapsed && (
       <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
         {label}

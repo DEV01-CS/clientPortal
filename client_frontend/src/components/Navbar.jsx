@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, User, LogOut, UserCircle } from "lucide-react";
+import { Search, Bell, User, LogOut, UserCircle, Inbox } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
+import { formatDistanceToNow } from "date-fns";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const displayName = user?.name || user?.email || "Lucy Clark";
-  
   const [showNotifications, setShowNotifications] = useState(false);
+  const { unreadCount, latestNotifications } = useNotifications();
   const [showProfile, setShowProfile] = useState(false);
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
@@ -65,18 +67,48 @@ const Navbar = () => {
               className="relative cursor-pointer p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <Bell className="w-6 h-6 text-gray-600" />
-              <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 h-4 w-4 text-xs flex items-center justify-center bg-red-500 text-white rounded-full border-2 border-white">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Notifications Dropdown */}
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-3 border-b border-gray-200 flex justify-between items-center">
                   <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                  {unreadCount > 0 && <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">{unreadCount} New</span>}
                 </div>
-                <div className="p-6 text-center">
-                  <p className="text-sm text-gray-500">No new notifications</p>
+                <div className="max-h-80 overflow-y-auto">
+                  {latestNotifications.length > 0 ? (
+                    latestNotifications.map(notification => (
+                      <div key={notification.id} className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => { navigate('/notifications'); setShowNotifications(false); }}>
+                        <p className="text-sm text-gray-700">{notification.message}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-10 text-center">
+                      <Inbox className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No new notifications</p>
+                    </div>
+                  )}
                 </div>
+                {latestNotifications.length > 0 && (
+                  <div className="p-2 bg-gray-50 text-center border-t border-gray-200">
+                    <button 
+                      onClick={() => { 
+                        navigate('/notifications'); 
+                        setShowNotifications(false); 
+                      }} 
+                      className="text-sm font-medium text-sidebar hover:underline"
+                    >
+                      View all notifications
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -122,4 +154,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

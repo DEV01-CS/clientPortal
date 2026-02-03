@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { initiateGoogleOAuth, checkGoogleOAuthStatus, checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
-import { CheckCircle, XCircle, Link as LinkIcon, Edit2, Save, X, Settings } from 'lucide-react';
+import { checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
+// import { initiateGoogleOAuth, checkGoogleOAuthStatus } from '../services/googleOAuthService';
+import { CheckCircle, Edit2, Save, X, Settings } from 'lucide-react';
+// import { XCircle, Link as LinkIcon } from 'lucide-react';
 import api from '../api/api';
 
 const MyAccount = () => {
     const { user: authUser, isAuthenticated } = useAuth();
-    const [oauthStatus, setOauthStatus] = useState({ is_connected: false, is_expired: false });
+    // const [oauthStatus, setOauthStatus] = useState({ is_connected: false, is_expired: false });
     const [adminOAuthStatus, setAdminOAuthStatus] = useState({ connected: false, is_expired: false });
-    const [isConnecting, setIsConnecting] = useState(false);
+    // const [isConnecting, setIsConnecting] = useState(false);
     const [isConnectingAdmin, setIsConnectingAdmin] = useState(false);
     const [message, setMessage] = useState('');
     const [isEditing, setIsEditing] = useState(false);
@@ -99,7 +101,7 @@ const MyAccount = () => {
     useEffect(() => {
         if (isAuthenticated) {
             fetchProfileData();
-            checkOAuthStatus();
+            // checkOAuthStatus();
         }
         
         // Check for OAuth callback messages in URL
@@ -131,13 +133,13 @@ const MyAccount = () => {
         }
         
         if (success === 'connected') {
-            setMessage('Google account connected successfully!');
-            setTimeout(() => setMessage(''), 5000);
-            // Refresh OAuth status after successful connection
-            setTimeout(() => {
-                checkOAuthStatus();
-            }, 1000);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // setMessage('Google account connected successfully!');
+            // setTimeout(() => setMessage(''), 5000);
+            // // Refresh OAuth status after successful connection
+            // setTimeout(() => {
+            //     checkOAuthStatus();
+            // }, 1000);
+            // window.history.replaceState({}, document.title, window.location.pathname);
         } else if (error) {
             let errorMessage = `Error: ${error}`;
             // Make error messages more user-friendly
@@ -156,27 +158,27 @@ const MyAccount = () => {
         }
     }, [isAuthenticated, fetchProfileData, checkAdminOAuthStatusHandler]);
 
-    const checkOAuthStatus = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                if (process.env.NODE_ENV === 'development') {
-                  console.warn('No authentication token found. User needs to login first.');
-                }
-                return;
-            }
-            
-            const status = await checkGoogleOAuthStatus();
-            setOauthStatus(status);
-        } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error checking OAuth status:', error);
-              if (error.response?.status === 401) {
-                console.warn('Authentication required. Please login first.');
-              }
-            }
-        }
-    };
+    // const checkOAuthStatus = async () => {
+    //     try {
+    //         const token = localStorage.getItem("token");
+    //         if (!token) {
+    //             if (process.env.NODE_ENV === 'development') {
+    //               console.warn('No authentication token found. User needs to login first.');
+    //             }
+    //             return;
+    //         }
+    //         
+    //         const status = await checkGoogleOAuthStatus();
+    //         setOauthStatus(status);
+    //     } catch (error) {
+    //         if (process.env.NODE_ENV === 'development') {
+    //           console.error('Error checking OAuth status:', error);
+    //           if (error.response?.status === 401) {
+    //             console.warn('Authentication required. Please login first.');
+    //           }
+    //         }
+    //     }
+    // };
 
 
     const handleConnectAdminGoogle = async () => {
@@ -221,47 +223,47 @@ const MyAccount = () => {
         }
     };
 
-    const handleConnectGoogle = async () => {
-        try {
-            setIsConnecting(true);
-            
-            const token = localStorage.getItem("token");
-            if (!token) {
-                setMessage('Please login first before connecting your Google account.');
-                setIsConnecting(false);
-                return;
-            }
-            
-            const response = await initiateGoogleOAuth();
-            
-            if (response && response.authorization_url) {
-                window.location.href = response.authorization_url;
-            } else {
-                throw new Error('No authorization URL received');
-            }
-        } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error initiating OAuth:', error);
-            }
-            
-            let errorMessage = 'Failed to initiate Google connection. Please try again.';
-            
-            if (error.response) {
-                if (error.response.status === 401) {
-                    errorMessage = 'Authentication required. Please login again.';
-                } else if (error.response.status === 500) {
-                    errorMessage = error.response.data?.error || 'Server error. Please check OAuth configuration.';
-                } else {
-                    errorMessage = error.response.data?.error || error.response.data?.detail || errorMessage;
-                }
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            setMessage(errorMessage);
-            setIsConnecting(false);
-        }
-    };
+    // const handleConnectGoogle = async () => {
+    //     try {
+    //         setIsConnecting(true);
+    //         
+    //         const token = localStorage.getItem("token");
+    //         if (!token) {
+    //             setMessage('Please login first before connecting your Google account.');
+    //             setIsConnecting(false);
+    //             return;
+    //         }
+    //         
+    //         const response = await initiateGoogleOAuth();
+    //         
+    //         if (response && response.authorization_url) {
+    //             window.location.href = response.authorization_url;
+    //         } else {
+    //             throw new Error('No authorization URL received');
+    //         }
+    //     } catch (error) {
+    //         if (process.env.NODE_ENV === 'development') {
+    //           console.error('Error initiating OAuth:', error);
+    //         }
+    //         
+    //         let errorMessage = 'Failed to initiate Google connection. Please try again.';
+    //         
+    //         if (error.response) {
+    //             if (error.response.status === 401) {
+    //                 errorMessage = 'Authentication required. Please login again.';
+    //             } else if (error.response.status === 500) {
+    //                 errorMessage = error.response.data?.error || 'Server error. Please check OAuth configuration.';
+    //             } else {
+    //                 errorMessage = error.response.data?.error || error.response.data?.detail || errorMessage;
+    //             }
+    //         } else if (error.message) {
+    //             errorMessage = error.message;
+    //         }
+    //         
+    //         setMessage(errorMessage);
+    //         setIsConnecting(false);
+    //     }
+    // };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -379,7 +381,7 @@ const MyAccount = () => {
             )}
 
             {/* Google Connection Card */}
-            <div className="bg-gray-200 rounded-lg p-2 mb-2">
+            {/* <div className="bg-gray-200 rounded-lg p-2 mb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -417,7 +419,7 @@ const MyAccount = () => {
                         )}
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Admin Google Connection Card - Only visible to admin email */}
             {(authUser?.email === ADMIN_EMAIL || profileData?.email === ADMIN_EMAIL) && (

@@ -201,7 +201,7 @@ const MyTrends = () => {
       {/* Header */}
       <div className="flex items-center justify-start gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">My Trends</h1>
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-full cursor-pointer">
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
           <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span>
         </div>
       </div>

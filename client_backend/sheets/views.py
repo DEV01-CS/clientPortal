@@ -14,7 +14,7 @@ from .oauth_utils import (
     get_authorization_url_admin,
     exchange_code_for_tokens_admin
 )
-# using OAuth-based functions from oauth_utils.py
+from accounts.utils import create_notification
 from .chatbot import (
     is_relevant_message,
     generate_response,
@@ -25,6 +25,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.utils import timezone
 from googleapiclient.errors import HttpError
+from django.contrib.auth.models import User
 import logging
 import traceback
 
@@ -62,6 +63,13 @@ def oauth_callback(request):
             try:
                 from sheets.oauth_utils import exchange_code_for_tokens_admin
                 token_obj = exchange_code_for_tokens_admin(code)
+                # Create a notification for the admin user
+                ADMIN_EMAIL = getattr(settings, 'ADMIN_EMAIL', 'accounts@servicechargeuk.com')
+                try:
+                    admin_user = User.objects.get(email=ADMIN_EMAIL)
+                    create_notification(admin_user, "Admin Google Account was successfully connected.")
+                except User.DoesNotExist:
+                    logger.warning(f"Could not create notification: Admin user with email {ADMIN_EMAIL} not found.")
                 logger.info(f"Admin OAuth tokens saved successfully. Token ID: {token_obj.id}, Created: {token_obj.created_at}")
                 if is_localhost:
                     return redirect('/api/sheets/oauth/admin/test-status/?success=true')
@@ -156,7 +164,7 @@ def get_google_drive_file_oauth(user, file_id):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def test_google_sheets_connection(request):
     """Test endpoint to verify Google Sheets OAuth connection and list all sheets"""
     try:
@@ -321,6 +329,21 @@ def client_dashboard(request):
                 "message": "OAuth scopes have been updated. Please disconnect and reconnect your Google account to grant the new permissions.",
                 "requires_reconnect": True
             }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check for permission errors (403)
+        if '403' in error_str or 'permission' in error_str.lower() or 'caller does not have permission' in error_str.lower():
+            return Response({
+                "error": "Permission Denied",
+                "message": "The connected Admin Google Account does not have permission to access the Google Sheet. Please share the sheet with the connected email."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Check for API disabled
+        if 'API has not been used' in error_str or 'disabled' in error_str.lower():
+            return Response({
+                "error": "API Disabled",
+                "message": "Google Sheets API or Drive API is not enabled in the Google Cloud Console project."
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         if settings.DEBUG:
             logger.error(f"Dashboard error: {str(e)}\n{traceback.format_exc()}")
         return Response({
@@ -330,7 +353,7 @@ def client_dashboard(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def test_client_data(request, client_id=None):
     """Test endpoint to fetch data (for testing purposes)
     Supports both client_id and email lookup
@@ -347,7 +370,7 @@ def test_client_data(request, client_id=None):
         
         # If no identifier provided, try to use logged-in user's email
         if not test_client_id and not test_email:
-            test_email = request.user.email
+            test_email = request.user.email if request.user.is_authenticated else None
         
         if not test_client_id and not test_email:
             return Response({
@@ -720,6 +743,9 @@ def upload_document(request):
         if sheets_error:
             response_data["warning"] = sheets_error
         
+        # Create a notification for the user who uploaded the document
+        create_notification(request.user, f"Document '{name}' was uploaded successfully.")
+
         return Response(response_data, status=status.HTTP_201_CREATED)
         
     except AdminGoogleOAuthToken.DoesNotExist:
@@ -920,6 +946,21 @@ def client_documents(request):
                 "message": "OAuth scopes have been updated. Please disconnect and reconnect admin Google account to grant the new permissions (including file upload access).",
                 "requires_reconnect": True
             }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check for permission errors (403)
+        if '403' in error_str or 'permission' in error_str.lower() or 'caller does not have permission' in error_str.lower():
+            return Response({
+                "error": "Permission Denied",
+                "message": "The connected Admin Google Account does not have permission to access the Google Sheet. Please share the sheet with the connected email."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Check for API disabled
+        if 'API has not been used' in error_str or 'disabled' in error_str.lower():
+            return Response({
+                "error": "API Disabled",
+                "message": "Google Sheets API or Drive API is not enabled in the Google Cloud Console project."
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         if settings.DEBUG:
             logger.error(f"Documents error: {str(e)}\n{traceback.format_exc()}")
         return Response({
@@ -929,7 +970,7 @@ def client_documents(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def test_google_drive_connection(request):
     """Test endpoint to verify Google Drive OAuth connection"""
     try:
@@ -1288,6 +1329,9 @@ def get_client_data_multi_step(user, profile, auto_sync_client_id=True):
             # If it's an auth error wrapped in Exception, propagate it
             if 'invalid_grant' in str(e) or 'unauthorized' in str(e).lower() or 'token' in str(e).lower():
                 raise
+            # Propagate permission errors so the view can handle them (instead of returning 404)
+            if 'permission' in str(e).lower() or '403' in str(e):
+                raise
             # Otherwise log and return None to try next method
             if settings.DEBUG:
                 logger.warning(f"Lookup failed for {func.__name__}: {str(e)}")
@@ -1478,8 +1522,8 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
                 if header_lower in ['client_id', 'client id', 'clientid']:
                     identifier_col_index = idx
                     break
-            elif identifier_column.lower() in ['email', 'email']:
-                if header_lower in ['email', 'e-mail', 'e_mail', 'e mail'] or 'email' in header_lower:
+            elif identifier_column.lower() in ['email', 'email', 'Email']:
+                if header_lower in ['email', 'e-mail', 'e_mail', 'e mail' ,'Email'] or 'email' in header_lower:
                     identifier_col_index = idx
                     break
         
@@ -1576,7 +1620,14 @@ def get_input_sheet_data(user, row_identifier, identifier_column='client_id', sh
         # Find the column index for identifier
         identifier_col_index = None
         for idx, header in enumerate(headers):
-            if str(header).strip().lower() == identifier_column.lower():
+            header_lower = str(header).strip().lower()
+            target_col = identifier_column.lower()
+            
+            if header_lower == target_col:
+                identifier_col_index = idx
+                break
+            # Flexible match for email (e.g. matches 'E-mail', 'Email Address')
+            if target_col == 'email' and header_lower in ['e-mail', 'e_mail', 'email address', 'e-mail address']:
                 identifier_col_index = idx
                 break
         

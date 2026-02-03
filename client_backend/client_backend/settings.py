@@ -8,7 +8,7 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Note: GOOGLE_APPLICATION_CREDENTIALS removed - now using OAuth 2.0 authentication
+# using OAuth 2.0 authentication
 # OAuth credentials are configured via environment variables (GOOGLE_OAUTH_CLIENT_ID, etc.)
 
 # Quick-start development settings - unsuitable for production
@@ -113,6 +113,7 @@ if os.getenv('DATABASE_URL'):
             default=os.getenv('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
+            
         )
     }
 else:

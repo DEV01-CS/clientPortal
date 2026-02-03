@@ -17,6 +17,7 @@ const Login = () => {
     postcode: "",
     agreeToTerms: false,
   });
+  const [error, setError] = useState("");
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -31,6 +32,7 @@ const Login = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if (error) setError("");
   };
 
   // Helper function to generate username from email (same logic as signup)
@@ -44,20 +46,21 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     // Basic validation
     if (isSignup && !formData.name) {
-      alert("Please fill in all required fields");
+      setError("Please fill in all required fields");
       return;
     }
 
     if (!formData.email || !formData.password) {
-      alert("Please fill in all required fields");
+      setError("Please fill in all required fields");
       return;
     }
 
     if (!formData.agreeToTerms) {
-      alert("Please agree to the Terms & Privacy");
+      setError("Please agree to the Terms & Privacy");
       return;
     }
 
@@ -152,7 +155,7 @@ const Login = () => {
         errorMessage = error.message;
       }
 
-      alert(errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -198,6 +201,12 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-60 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                {error} !
+              </div>
+            )}
+
             {/* Name Field - Only shown in signup mode */}
             {isSignup && (
               <div>
@@ -378,4 +387,3 @@ const Login = () => {
 };
 
 export default Login;
-

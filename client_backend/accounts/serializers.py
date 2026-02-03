@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 from .models import UserProfile
+from .models import Notification
 
 class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -73,3 +74,10 @@ class signupSerializer(serializers.ModelSerializer):
                 )
         
         return user
+    
+# Notification Serializer
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'is_read', 'created_at']

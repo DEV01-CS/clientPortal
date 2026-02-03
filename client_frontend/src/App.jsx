@@ -14,9 +14,9 @@ import MyExpert from "./pages/MyExpert";
 import MyAccount from "./pages/MyAccount";
 import MyDocuments from "./pages/MyDocuments";
 import TestConnection from "./pages/TestConnection";
-// import Notifications from "./pages/Notifications";
-// import Settings from "./pages/Settings";
-
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
+import { NotificationProvider } from "./context/NotificationContext";
 const AppLayout = () => {
   const { isCollapsed } = useSidebar();
 
@@ -41,8 +41,8 @@ const AppLayout = () => {
             <Route path="/my-account" element={<MyAccount />} />
             <Route path="/my-documents" element={<MyDocuments />} />
             <Route path="/test-connection" element={<TestConnection />} />
-            {/* <Route path="/notifications" element={<Notifications />} /> */}
-            {/* <Route path="/settings" element={<Settings />} /> */}
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
       </div>
@@ -53,22 +53,24 @@ const AppLayout = () => {
 function App() {
   return (
     <AuthProvider>
-      <SidebarProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/*"
-              element={
-                <PrivateRoute>
-                  <AppLayout />
-                </PrivateRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Router>
-      </SidebarProvider>
+      <NotificationProvider>
+        <SidebarProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/*"
+                element={
+                  <PrivateRoute>
+                    <AppLayout />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </Router>
+        </SidebarProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
