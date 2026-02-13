@@ -1062,17 +1062,23 @@ def chatbot_message(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_oauth_status(request):
-    """Check if admin Google account is connected - Only for admin email"""
-    # Check if user is admin (accounts@servicechargeuk.com)
-    ADMIN_EMAIL = getattr(settings, 'ADMIN_EMAIL', 'accounts@servicechargeuk.com')
+    # """Check if admin Google account is connected - Only for admin email"""
+    # # Check if user is admin (accounts@servicechargeuk.com)
+    # ADMIN_EMAIL = getattr(settings, 'ADMIN_EMAIL', 'accounts@servicechargeuk.com')
+    # ALLOWED_ADMINS = [ADMIN_EMAIL, 'scuk027@gmail.com'] #make scuk207 admin for testing
+    # """Check if admin Google account is connected - Visible to all authenticated users"""
+    # # We allow all users to check status so they know if the system is operational
     
-    if request.user.email != ADMIN_EMAIL:
-        return Response({
-            "connected": False,
-            "is_expired": False,
-            "unauthorized": True
-        }, status=status.HTTP_200_OK)
-    
+    # # if request.user.email != ADMIN_EMAIL:
+    # if request.user.email not in ALLOWED_ADMINS:
+    #     return Response({
+    #         "connected": False,
+    #         "is_expired": False,
+    #         "unauthorized": True
+    #     }, status=status.HTTP_200_OK)
+    """Check if admin Google account is connected - Visible to all authenticated users"""
+    # allow all users to check status so they know if the system is operational 
+
     try:
         token_obj = AdminGoogleOAuthToken.objects.get()
         is_expired = token_obj.is_expired()
@@ -1096,8 +1102,10 @@ def admin_oauth_initiate(request):
     """Initiate OAuth flow for admin Google account - Only for admin email"""
     # Check if user is admin (accounts@servicechargeuk.com)
     ADMIN_EMAIL = getattr(settings, 'ADMIN_EMAIL', 'accounts@servicechargeuk.com')
+    ALLOWED_ADMINS = [ADMIN_EMAIL, 'scuk027@gmail.com']
     
-    if request.user.email != ADMIN_EMAIL:
+    # if request.user.email != ADMIN_EMAIL:
+    if request.user.email not in ALLOWED_ADMINS:
         return Response({
             "error": "Unauthorized",
             "message": "Only admin can connect Google account"

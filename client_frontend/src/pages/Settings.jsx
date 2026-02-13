@@ -1,11 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
+import api from "../api/api";
+import { useAuth } from "../auth/AuthContext";
 
 const Settings = () => {
+    const { user } = useAuth();
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [adminStatus, setAdminStatus] = useState({ connected: false, loading: true });
     const navigate = useNavigate();
+    
+    const ADMIN_EMAILS = ['accounts@servicechargeuk.com', 'scuk027@gmail.com'];
+    const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
+    useEffect(() => {
+        checkAdminStatus();
+    }, []);
+
+    const checkAdminStatus = async () => {
+        try {
+            const response = await api.get('/api/sheets/oauth/admin/status/');
+            setAdminStatus({ connected: response.data.connected, loading: false });
+        } catch (error) {
+            console.error("Failed to check admin status", error);
+            setAdminStatus({ connected: false, loading: false });
+        }
+    };
+
+    const handleAdminConnect = async () => {
+        try {
+            const response = await api.get('/api/sheets/oauth/admin/initiate/');
+            window.location.href = response.data.auth_url;
+        } catch (error) {
+            console.error("Failed to initiate admin oauth", error);
+            alert("Failed to initiate connection");
+        }
+    };
 
     const toggleDarkMode = () => {
         setIsDarkMode(!isDarkMode);
@@ -24,6 +55,19 @@ const Settings = () => {
                     <ActionButton onClick={() => navigate('/my-account')}>
                         Manage Account
                     </ActionButton>
+                </SettingsRow>
+
+                <SettingsRow title="Admin Connection" description="Manage Admin Google Sheet connection.">
+                    <div className="flex items-center gap-4">
+                        <span className={`text-sm font-medium ${adminStatus.connected ? 'text-green-600' : 'text-gray-500'}`}>
+                            {adminStatus.connected ? 'Connected' : 'Not Connected'}
+                        </span>
+                        {isAdmin && (
+                            <ActionButton onClick={handleAdminConnect}>
+                                {adminStatus.connected ? 'Reconnect' : 'Connect'}
+                            </ActionButton>
+                        )}
+                    </div>
                 </SettingsRow>
 
                 <SettingsRow title="Dark Mode" description="Toggle between light and dark themes for the interface.">
@@ -45,12 +89,6 @@ const Settings = () => {
                         <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
                 </SettingsRow>
-
-                {/* <SettingsRow title="Data & Privacy" description="Manage your data or request data export.">
-                    <ActionButton onClick={() => alert('Manage Data page not yet implemented.')}>
-                        Manage Data
-                    </ActionButton>
-                </SettingsRow> */}
             </div>
         </div>
     );

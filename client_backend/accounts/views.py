@@ -11,13 +11,13 @@ from .models import UserProfile, Notification
 from .utils import create_notification
 
 @api_view(['POST'])
-@permission_classes([AllowAny]) 
+@permission_classes([AllowAny])
 def signup(request):
     try:
         serializer = signupSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Create a welcome notification for the new user
+            #welcome notification for the new user
             create_notification(user, f"Welcome to the Client Portal, {user.username}!")
             return Response({'message':'User registered successfully'},status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -32,7 +32,7 @@ def signup(request):
 def login(request):
     """
     Custom login endpoint with error messages
-    Accepts either username or email
+    Can accepts either username or email
     """
     try:
         username_or_email = request.data.get('username') or request.data.get('email')
@@ -44,7 +44,7 @@ def login(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Try to find user by email first, then by username
+        # to find user by email first, then by username
         try:
             if '@' in username_or_email:
                 user = User.objects.get(email=username_or_email)
@@ -55,7 +55,6 @@ def login(request):
                 {'error': 'Account not found'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        
         # Check if user is active
         if not user.is_active:
             return Response(
@@ -63,7 +62,7 @@ def login(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        # Check password - this is the key difference
+        # Check password- this is the key difference
         if not user.check_password(password):
             return Response(
                 {'error': 'Wrong password. Please try again.'},
@@ -119,7 +118,7 @@ def user_profile(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ==================== NOTIFICATION VIEWS =============
+# =============== NOTIFICATION VIEWS ============
 
 class NotificationListView(generics.ListAPIView):
     """

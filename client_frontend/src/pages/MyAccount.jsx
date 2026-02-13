@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
-// import { initiateGoogleOAuth, checkGoogleOAuthStatus } from '../services/googleOAuthService';
 import { CheckCircle, Edit2, Save, X, Settings } from 'lucide-react';
-// import { XCircle, Link as LinkIcon } from 'lucide-react';
 import api from '../api/api';
+
+// Admin email - only these user can see admin connection UI
+const ADMIN_EMAILS = ['accounts@servicechargeuk.com', 'scuk027@gmail.com'];
 
 const MyAccount = () => {
     const { user: authUser, isAuthenticated } = useAuth();
@@ -28,8 +29,7 @@ const MyAccount = () => {
         tax_id: '',
     });
 
-    // Admin email - only this user can see admin connection UI
-    const ADMIN_EMAIL = 'accounts@servicechargeuk.com';
+    const isAdmin = (authUser?.email && ADMIN_EMAILS.includes(authUser.email)) || (profileData?.email && ADMIN_EMAILS.includes(profileData.email));
 
     const checkAdminOAuthStatusHandler = useCallback(async () => {
         try {
@@ -37,7 +37,7 @@ const MyAccount = () => {
             if (!token) return;
             
             // Only check if user is admin
-            if (authUser?.email !== ADMIN_EMAIL && profileData?.email !== ADMIN_EMAIL) {
+            if (!isAdmin) {
                 return;
             }
             
@@ -48,7 +48,7 @@ const MyAccount = () => {
               console.error('Error checking admin OAuth status:', error);
             }
         }
-    }, [authUser?.email, profileData?.email]);
+    }, [isAdmin]);
 
     const fetchProfileData = useCallback(async () => {
         try {
@@ -68,7 +68,7 @@ const MyAccount = () => {
             });
             
             // Check admin OAuth status after profile is loaded (if user is admin)
-            if (authUser?.email === ADMIN_EMAIL || data.email === ADMIN_EMAIL) {
+            if ((authUser?.email && ADMIN_EMAILS.includes(authUser.email)) || (data.email && ADMIN_EMAILS.includes(data.email))) {
                 checkAdminOAuthStatusHandler();
             }
         } catch (error) {
@@ -89,7 +89,7 @@ const MyAccount = () => {
             });
             
             // Check admin OAuth status if user is admin (even if profile fetch failed)
-            if (authUser?.email === ADMIN_EMAIL) {
+            if (authUser?.email && ADMIN_EMAILS.includes(authUser.email)) {
                 checkAdminOAuthStatusHandler();
             }
         } finally {
@@ -133,13 +133,7 @@ const MyAccount = () => {
         }
         
         if (success === 'connected') {
-            // setMessage('Google account connected successfully!');
-            // setTimeout(() => setMessage(''), 5000);
-            // // Refresh OAuth status after successful connection
-            // setTimeout(() => {
-            //     checkOAuthStatus();
-            // }, 1000);
-            // window.history.replaceState({}, document.title, window.location.pathname);
+            
         } else if (error) {
             let errorMessage = `Error: ${error}`;
             // Make error messages more user-friendly
@@ -158,29 +152,7 @@ const MyAccount = () => {
         }
     }, [isAuthenticated, fetchProfileData, checkAdminOAuthStatusHandler]);
 
-    // const checkOAuthStatus = async () => {
-    //     try {
-    //         const token = localStorage.getItem("token");
-    //         if (!token) {
-    //             if (process.env.NODE_ENV === 'development') {
-    //               console.warn('No authentication token found. User needs to login first.');
-    //             }
-    //             return;
-    //         }
-    //         
-    //         const status = await checkGoogleOAuthStatus();
-    //         setOauthStatus(status);
-    //     } catch (error) {
-    //         if (process.env.NODE_ENV === 'development') {
-    //           console.error('Error checking OAuth status:', error);
-    //           if (error.response?.status === 401) {
-    //             console.warn('Authentication required. Please login first.');
-    //           }
-    //         }
-    //     }
-    // };
-
-
+    
     const handleConnectAdminGoogle = async () => {
         try {
             setIsConnectingAdmin(true);
@@ -222,48 +194,6 @@ const MyAccount = () => {
             setIsConnectingAdmin(false);
         }
     };
-
-    // const handleConnectGoogle = async () => {
-    //     try {
-    //         setIsConnecting(true);
-    //         
-    //         const token = localStorage.getItem("token");
-    //         if (!token) {
-    //             setMessage('Please login first before connecting your Google account.');
-    //             setIsConnecting(false);
-    //             return;
-    //         }
-    //         
-    //         const response = await initiateGoogleOAuth();
-    //         
-    //         if (response && response.authorization_url) {
-    //             window.location.href = response.authorization_url;
-    //         } else {
-    //             throw new Error('No authorization URL received');
-    //         }
-    //     } catch (error) {
-    //         if (process.env.NODE_ENV === 'development') {
-    //           console.error('Error initiating OAuth:', error);
-    //         }
-    //         
-    //         let errorMessage = 'Failed to initiate Google connection. Please try again.';
-    //         
-    //         if (error.response) {
-    //             if (error.response.status === 401) {
-    //                 errorMessage = 'Authentication required. Please login again.';
-    //             } else if (error.response.status === 500) {
-    //                 errorMessage = error.response.data?.error || 'Server error. Please check OAuth configuration.';
-    //             } else {
-    //                 errorMessage = error.response.data?.error || error.response.data?.detail || errorMessage;
-    //             }
-    //         } else if (error.message) {
-    //             errorMessage = error.message;
-    //         }
-    //         
-    //         setMessage(errorMessage);
-    //         setIsConnecting(false);
-    //     }
-    // };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -379,50 +309,9 @@ const MyAccount = () => {
                     {message}
                 </div>
             )}
-
-            {/* Google Connection Card */}
-            {/* <div className="bg-gray-200 rounded-lg p-2 mb-2">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                            <LinkIcon className="w-6 h-6 text-gray-600" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-gray-900">Google Account Connection</h3>
-                            <p className="text-sm text-gray-600">
-                                {oauthStatus.is_connected 
-                                    ? 'Your Google account is connected' 
-                                    : 'Connect your Google account to access Google Sheets and Drive'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        {oauthStatus.is_connected ? (
-                            <div className="flex items-center gap-2 text-green-600">
-                                <CheckCircle className="w-5 h-5" />
-                                <span className="text-sm font-medium">Connected</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-gray-500">
-                                <XCircle className="w-5 h-5" />
-                                <span className="text-sm font-medium">Not Connected</span>
-                            </div>
-                        )}
-                        {!oauthStatus.is_connected && (
-                            <button
-                                onClick={handleConnectGoogle}
-                                disabled={isConnecting}
-                                className="px-4 py-2 bg-sidebar text-white rounded-lg hover:bg-sidebar/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                            >
-                                {isConnecting ? 'Connecting...' : 'Connect Google'}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div> */}
-
+            
             {/* Admin Google Connection Card - Only visible to admin email */}
-            {(authUser?.email === ADMIN_EMAIL || profileData?.email === ADMIN_EMAIL) && (
+            {isAdmin && (
                 <div className="bg-blue-50 rounded-lg p-2 mb-2 border border-blue-200">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -442,7 +331,14 @@ const MyAccount = () => {
                             {adminOAuthStatus.connected ? (
                                 <div className="flex items-center gap-2 text-green-600">
                                     <CheckCircle className="w-5 h-5" />
-                                    <span className="text-sm font-medium">Connected</span>
+                                    <span className="text-sm font-medium mr-2">Connected</span>
+                                    <button
+                                        onClick={handleConnectAdminGoogle}
+                                        disabled={isConnectingAdmin}
+                                        className="px-3 py-1 bg-white border border-blue-200 text-blue-600 rounded hover:bg-blue-50 transition-colors text-xs font-medium"
+                                    >
+                                        {isConnectingAdmin ? '...' : 'Reconnect'}
+                                    </button>
                                 </div>
                             ) : (
                                 <button

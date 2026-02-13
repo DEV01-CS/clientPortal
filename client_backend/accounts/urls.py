@@ -6,9 +6,8 @@ from .views import (signup,
                     MarkAllAsReadView, 
                     ClearAllView, 
                     DeleteNotificationView)
-from rest_framework_simplejwt.views import (
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
+
 
 urlpatterns = [
     path('signup/', signup),
