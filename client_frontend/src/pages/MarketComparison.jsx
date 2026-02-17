@@ -1,138 +1,145 @@
-import { useState, useEffect, useCallback} from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchDashboardData } from "../services/dashboardService";
 
 const MarketComparison = () => {
   const [selectedView, setSelectedView] = useState("comparison"); // 'comparison' or 'analysis'
-   const [marketData, setMarketData] = useState({});
-   const [loading, setLoading] = useState(true);
+  const [marketData, setMarketData] = useState({});
+  const [loading, setLoading] = useState(true);
 
-     useEffect(() => {
-       const loadData = async () => {
-         try {
-           const response = await fetchDashboardData();
-           if (response.data) {
-             setMarketData(response.data);
-           }
-         } catch (error) {
-           console.error("Error loading market data:", error);
-         } finally {
-           setLoading(false);
-         }
-       };
-       loadData();
-     }, []);
-   
-     const getData = useCallback((key) => {
-       if (!marketData) return "";
-       // Try exact match, or match with different quote types
-       return marketData[key] || marketData[key.replace('"', '”')] || marketData[key.replace('”', '"')] || "";
-     }, [marketData]);
-   
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetchDashboardData();
+        if (response.data) {
+          setMarketData(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading market data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  const comparisonData = [
+  const getData = useCallback((key) => {
+    if (!marketData) return "";
+    // Try exact match, or match with different quote types
+    return marketData[key] || marketData[key.replace('"', '”')] || marketData[key.replace('”', '"')] || "";
+  }, [marketData]);
+
+  const comparisonData = useMemo(() => [
     {
       category: "Service Charge (£/unit/year)",
-      yourProperty: "£2,551",
+      yourProperty: getData("Service Charge") || getData('1"04') || "N/A",
       market: "£2,400",
       insight: "Low",
     },
     {
       category: "Service Charge per sqm (£/sqm)",
-      yourProperty: "£3.59",
+      yourProperty: getData("Service Charge per sqm") || "N/A",
       market: "£3.20",
       insight: "Low",
     },
     {
       category: "Total Annual Budget",
-      yourProperty: "£370,000",
+      yourProperty: getData("Total Annual Budget") || "N/A",
       market: "£350,000",
       insight: "Low",
     },
     {
       category: "Budget Change (YoY)",
-      yourProperty: "+5%",
+      yourProperty: getData("Budget Change (YoY)") || "N/A",
       market: "+3%",
       insight: "Low",
     },
     {
       category: "Management Fee (%)",
-      yourProperty: "12%",
+      yourProperty: getData("Management Fee (%)") || "N/A",
       market: "10%",
       insight: "Low",
     },
     {
       category: "Staffing Costs (%)",
-      yourProperty: "27%",
+      yourProperty: getData("Staffing Costs (%)") || "N/A",
       market: "25%",
       insight: "Low",
     },
     {
       category: "Utilities Costs (%)",
-      yourProperty: "16%",
+      yourProperty: getData("Utilities Costs (%)") || "N/A",
       market: "18%",
       insight: "Low",
     },
     {
       category: "Maintenance & Repairs (%)",
-      yourProperty: "22%",
+      yourProperty: getData("Maintenance & Repairs (%)") || "N/A",
       market: "20%",
       insight: "Low",
     },
     {
       category: "Sinking / Reserve Fund (£/unit)",
-      yourProperty: "£1,200",
+      yourProperty: getData("Sinking / Reserve Fund") || "N/A",
       market: "£1,000",
       insight: "Low",
     },
     {
       category: "Cleaning & Concierge Costs (£/unit)",
-      yourProperty: "£800",
+      yourProperty: getData("Cleaning & Concierge Costs") || "N/A",
       market: "£750",
       insight: "Low",
     },
     {
       category: "Insurance Cost (£/unit)",
-      yourProperty: "£300",
+      yourProperty: getData("Insurance Cost") || "N/A",
       market: "£280",
       insight: "Low",
     },
     {
       category: "Number of Units",
-      yourProperty: "145",
+      yourProperty: getData("Property Size") || getData('1"02') || "N/A",
       market: "150",
       insight: "Low",
     },
     {
       category: "Building Type",
-      yourProperty: "Residential",
+      yourProperty: getData("Building Type") || "N/A",
       market: "Residential",
       insight: "Low",
     },
     {
       category: "Building Age",
-      yourProperty: "30+ years",
+      yourProperty: getData("Building Age") || "N/A",
       market: "25 years",
       insight: "Low",
     },
     {
       category: "Lift / M&E Complexity",
-      yourProperty: "Standard",
+      yourProperty: getData("Lift / M&E Complexity") || "N/A",
       market: "Standard",
       insight: "Low",
     },
     {
       category: "Geographic Location",
-      yourProperty: "SW18",
+      yourProperty: getData("Location") || getData('1"03') || "N/A",
       market: "SW18",
       insight: "Low",
     },
     {
       category: "Overall Cost Position",
-      yourProperty: "High",
+      yourProperty: getData("Overall Cost Position") || "N/A",
       market: "Medium",
       insight: "Low",
     },
-  ];
+  ], [getData]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-gray-600">Loading market comparison...</div>
+      </div>
+    );
+  }
 
   const InsightBar = () => (
     <div className="flex items-center gap-2">

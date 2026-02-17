@@ -499,6 +499,8 @@ def test_client_data(request, client_id=None):
                     if len(rows) > 1:
                         debug_info["ltp_headers_row2"] = rows[1] if len(rows) > 1 else []
                     if len(rows) > 2:
+                        debug_info["ltp_headers_row3"] = rows[2] if len(rows) > 2 else []
+                    if len(rows) > 2:
                         # Get first 5 data rows (row 3-7) showing client_id and email
                         sample_data = []
                         for row in rows[2:7]:
@@ -1514,17 +1516,14 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         if not rows or len(rows) < 2:
             return None
         
-        # Row 1 (index 0) contains degrees, Row 2 (index 1) contains headers
+        # Row 1 (index 0) contains degrees
         degrees = rows[0]
-        headers = rows[1]
         
-        if not headers:
-            return None
+        # Determine header row (Row 2 or Row 3)
+        header_row_index = -1
+        headers = []
         
-        # Find the column index for identifier (client_id or email)
-        identifier_col_index = None
-        
-        # Helper to check a row for identifier
+        # Helper to find col index in a specific row
         def find_col_index(row_values):
             for idx, val in enumerate(row_values):
                 val_lower = str(val).strip().lower()
@@ -1536,12 +1535,31 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
                         return idx
             return None
 
-        # Try headers (Row 2) first
-        identifier_col_index = find_col_index(headers)
+        # Helper to check if a row looks like a header row containing the identifier
+        def is_header_row(row_values, target_col):
+            return find_col_index(row_values) is not None
+
+        # 1. Try degrees (Row 1) first for identifier
+        identifier_col_index = find_col_index(degrees)
+
+        # 2. Check Row 2 (index 1)
+        if len(rows) > 1 and is_header_row(rows[1], identifier_column):
+            header_row_index = 1
+            headers = rows[1]
+            # If we haven't found index yet, use this one
+            if identifier_col_index is None:
+                identifier_col_index = find_col_index(headers)
+        # 3. Check Row 3 (index 2)
+        elif len(rows) > 2 and is_header_row(rows[2], identifier_column):
+            header_row_index = 2
+            headers = rows[2]
+            # If we haven't found index yet, use this one
+            if identifier_col_index is None:
+                identifier_col_index = find_col_index(headers)
         
-        # If not found, try degrees (Row 1) - fallback if Email is only in first row
-        if identifier_col_index is None:
-            identifier_col_index = find_col_index(degrees)
+        # Fallback: If no header row found, use Row 2 as headers (legacy behavior)
+        if not headers and len(rows) > 1:
+            headers = rows[1]
             
         if identifier_col_index is None:
             return None
@@ -1552,8 +1570,12 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         else:
             search_id = str(row_identifier).replace('#', '').strip().lower()
         
-        # Find matching row - start from row 3 (index 2)
-        for idx, row in enumerate(rows[2:], start=3):
+        # Find matching row - start from Row 2 (index 1)
+        for idx, row in enumerate(rows[1:], start=1):
+            # Skip if this is the identified header row
+            if idx == header_row_index:
+                continue
+            
             # Pad row with empty strings if it's shorter than headers or degrees
             max_cols = max(len(headers), len(degrees))
             while len(row) < max_cols:
@@ -1584,7 +1606,7 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
                             if degree_key:
                                 row_data[degree_key] = value_str
                         
-                        # Add by header name (from row 2)
+                        # Add by header name (from detected header row)
                         if col_idx < len(headers) and headers[col_idx]:
                             header_name = str(headers[col_idx]).strip()
                             if header_name:
@@ -1678,49 +1700,49 @@ def get_input_sheet_data(user, row_identifier, identifier_column='client_id', sh
         raise Exception(f"Error getting Input sheet data: {str(e)}")
 
 
-def get_client_row_by_email_postcode(user, email, postcode, sheet_name=None):
-    """Get a specific client's row data from Google Sheets using email and postcode
+# def get_client_row_by_email_postcode(user, email, postcode, sheet_name=None):
+#     """Get a specific client's row data from Google Sheets using email and postcode
     
-    Args:
-        user: Django User object
-        email: User's email address
-        postcode: User's postcode
-        sheet_name: Optional sheet name. If None, uses the first sheet in the spreadsheet
-    """
-    try:
-        service = get_admin_sheets_service()
-        sheet = service.spreadsheets()
+#     Args:
+#         user: Django User object
+#         email: User's email address
+#         postcode: User's postcode
+#         sheet_name: Optional sheet name. If None, uses the first sheet in the spreadsheet
+#     """
+#     try:
+#         service = get_admin_sheets_service()
+#         sheet = service.spreadsheets()
         
-        # If sheet_name not provided, get the first sheet name
-        if sheet_name is None:
-            sheet_name = get_first_sheet_name(user)
+#         # If sheet_name not provided, get the first sheet name
+#         if sheet_name is None:
+#             sheet_name = get_first_sheet_name(user)
 
-        result = sheet.values().get(
-            spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range=f'{sheet_name}!A:Z'
-        ).execute()
+#         result = sheet.values().get(
+#             spreadsheetId=settings.GOOGLE_SHEET_ID,
+#             range=f'{sheet_name}!A:Z'
+#         ).execute()
 
-        rows = result.get('values', [])
-        if not rows:
-            return None
+#         rows = result.get('values', [])
+#         if not rows:
+#             return None
             
-        headers = [str(h).strip() for h in rows[0]] if rows else []
+#         headers = [str(h).strip() for h in rows[0]] if rows else []
 
-        for idx, row in enumerate(rows[1:], start=2):
-            while len(row) < len(headers):
-                row.append('')
+#         for idx, row in enumerate(rows[1:], start=2):
+#             while len(row) < len(headers):
+#                 row.append('')
 
-            row_data = dict(zip(headers, row))
-            #match by email and postcode
-            sheet_email = str(row_data.get('email', '')).strip().lower()
-            sheet_postcode = str(row_data.get('postcode', '')).strip().upper()
+#             row_data = dict(zip(headers, row))
+#             #match by email and postcode
+#             sheet_email = str(row_data.get('email', '')).strip().lower()
+#             sheet_postcode = str(row_data.get('postcode', '')).strip().upper()
 
-            if (sheet_email == email.lower() and sheet_postcode == postcode.upper()):
-                row_data['_row_number'] = idx
-                return row_data
+#             if (sheet_email == email.lower() and sheet_postcode == postcode.upper()):
+#                 row_data['_row_number'] = idx
+#                 return row_data
 
-        return None
-    except HttpError as e:
-        raise Exception(f"Google Sheets API error: {str(e)}")
-    except Exception as e:
-        raise Exception(f"Error getting client row : {str(e)}")
+#         return None
+#     except HttpError as e:
+#         raise Exception(f"Google Sheets API error: {str(e)}")
+#     except Exception as e:
+#         raise Exception(f"Error getting client row : {str(e)}")
