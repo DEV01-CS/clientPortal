@@ -10,7 +10,7 @@ const Settings = () => {
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [adminStatus, setAdminStatus] = useState({ connected: false, loading: true });
     const navigate = useNavigate();
-    
+
     const ADMIN_EMAILS = ['accounts@servicechargeuk.com', 'scuk027@gmail.com'];
     const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 

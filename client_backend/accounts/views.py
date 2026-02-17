@@ -19,7 +19,7 @@ def signup(request):
             user = serializer.save()
             #welcome notification for the new user
             create_notification(user, f"Welcome to the Client Portal, {user.username}!")
-            return Response({'message':'User registered successfully'},status=status.HTTP_201_CREATED)
+            return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({
@@ -96,7 +96,7 @@ def user_profile(request):
     PUT: Updates user profile data
     """
     try:
-        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile = UserProfile.objects.get(user=request.user)
         
         if request.method == 'GET':
             serializer = UserProfileSerializer(profile)

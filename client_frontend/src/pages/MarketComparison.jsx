@@ -1,7 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback} from "react";
+import { fetchDashboardData } from "../services/dashboardService";
 
 const MarketComparison = () => {
   const [selectedView, setSelectedView] = useState("comparison"); // 'comparison' or 'analysis'
+   const [marketData, setMarketData] = useState({});
+   const [loading, setLoading] = useState(true);
+
+     useEffect(() => {
+       const loadData = async () => {
+         try {
+           const response = await fetchDashboardData();
+           if (response.data) {
+             setMarketData(response.data);
+           }
+         } catch (error) {
+           console.error("Error loading market data:", error);
+         } finally {
+           setLoading(false);
+         }
+       };
+       loadData();
+     }, []);
+   
+     const getData = useCallback((key) => {
+       if (!marketData) return "";
+       // Try exact match, or match with different quote types
+       return marketData[key] || marketData[key.replace('"', '”')] || marketData[key.replace('”', '"')] || "";
+     }, [marketData]);
+   
 
   const comparisonData = [
     {
@@ -126,7 +152,8 @@ const MarketComparison = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Market Comparison</h1>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
-            <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span>
+            {/* <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span> */}
+            <span className="text-sm font-medium text-gray-700">{getData('1"01').split(',')[getData('1"01').split(',').length - 1]}</span>
           </div>
           <button className="px-4 py-2 bg-sidebar text-white rounded-lg font-medium hover:bg-teal-600 transition-colors">
             SCUK Rating System

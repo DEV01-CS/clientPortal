@@ -251,7 +251,7 @@ const Dashboard = () => {
         </h1>
 
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg text-sm cursor-pointer">
-          {dashboardData.city}{dashboardData.state ? `, ${dashboardData.state}` : ''}
+          {dashboardData.city.split(',')[dashboardData.city.split(',').length - 1]}{dashboardData.state ? `, ${dashboardData.state}` : ''}
         </div>
       </div>
 

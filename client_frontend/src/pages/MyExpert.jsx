@@ -120,7 +120,7 @@ const MyExpert = () => {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
                         <span className="text-sm font-medium text-gray-700">
-                            {getData('5"01') || 'Wandsworth, SW18'}
+                            {getData('5"01')}
                         </span>
                     </div>
 

@@ -78,20 +78,29 @@ const MyTrends = () => {
       }));
     }
 
-    // For other years, map from trend data (2"17 onwards)
-    // 2023: 17-23, 2024: 24-30, 2026: 38-44
-    // Note: 2025 trend data is 31-37, but we use detailed keys for 2025 above
-    const yearMap = { "2023": 17, "2024": 24, "2026": 38 };
+    // UPDATED: Using 6 categories per year to fit range 2"17 - 2"40
+    // 2023: 17-22, 2024: 23-28, 2025: 29-34, 2026: 35-40
+    const yearMap = { "2023": 17, "2024": 23, "2026": 35 };
     const startKey = yearMap[selectedYear];
 
     if (startKey) {
+      // Map categories to the 6-item trend sequence (skipping Professional Fees)
+      const trendOffsets = {
+        "Staff": 0, "Contracts & Maintenance": 1, "Utilities": 2,
+        "Insurance": 3, "Compliance": 4, "Reserve Fund": 5
+      };
+
       return categories.map((cat, index) => {
-        const key = `2"${String(startKey + index).padStart(2, '0')}`;
-        return {
-          category: cat.name,
-          budget: getData(key), // Assuming trend data represents Budget
-          actual: null // No actuals available for these years in this view
-        };
+        const offset = trendOffsets[cat.name];
+        if (offset !== undefined) {
+          const key = `2"${String(startKey + offset).padStart(2, '0')}`;
+          return {
+            category: cat.name,
+            budget: getData(key),
+            actual: null
+          };
+        }
+        return { category: cat.name, budget: null, actual: null };
       });
     }
 
@@ -133,7 +142,7 @@ const MyTrends = () => {
     const years = [2023, 2024, 2025, 2026];
     const categories = [
         "Staff", "Contracts & Maintenance", "Utilities", "Insurance",
-        "Professional Fees", "Compliance", "Reserve Fund"
+        "Compliance", "Reserve Fund"
     ];
     const data = [];
     let keyIndex = 17;
@@ -154,7 +163,6 @@ const MyTrends = () => {
     { name: "Contracts & Maintenance", color: "#60A5FA" },
     { name: "Utilities", color: "#93C5FD" },
     { name: "Insurance", color: "#F87171" },
-    { name: "Professional Fees", color: "#FB923C" },
     { name: "Compliance", color: "#FBBF24" },
     { name: "Reserve Fund", color: "#4ADE80" },
   ];
@@ -201,9 +209,6 @@ const MyTrends = () => {
       {/* Header */}
       <div className="flex items-center justify-start gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">My Trends</h1>
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
-          <span className="text-sm font-medium text-gray-700">Wandsworth, SW18</span>
-        </div>
       </div>
 
       {/* Budget Overview Section */}

@@ -110,7 +110,7 @@ def get_clients_documents_oauth(user, client_id, sheet_name='Documents'):
             # Return empty list if sheet is empty (no headers or data)
             return []
             
-        headers = rows[0] if rows else []
+        headers = [str(h).strip() for h in rows[0]] if rows else []
         if not headers:
             # Return empty list if no headers
             return []
@@ -1524,17 +1524,25 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         # Find the column index for identifier (client_id or email)
         identifier_col_index = None
         
-        for idx, header in enumerate(headers):
-            header_lower = str(header).strip().lower()
-            if identifier_column.lower() == 'client_id':
-                if header_lower in ['client_id', 'client id', 'clientid']:
-                    identifier_col_index = idx
-                    break
-            elif identifier_column.lower() in ['email', 'email', 'Email']:
-                if header_lower in ['email', 'e-mail', 'e_mail', 'e mail' ,'Email'] or 'email' in header_lower:
-                    identifier_col_index = idx
-                    break
+        # Helper to check a row for identifier
+        def find_col_index(row_values):
+            for idx, val in enumerate(row_values):
+                val_lower = str(val).strip().lower()
+                if identifier_column.lower() == 'client_id':
+                    if val_lower in ['client_id', 'client id', 'clientid']:
+                        return idx
+                elif identifier_column.lower() == 'email':
+                    if val_lower in ['email', 'e-mail', 'e_mail', 'e mail', 'email address'] or 'email' in val_lower:
+                        return idx
+            return None
+
+        # Try headers (Row 2) first
+        identifier_col_index = find_col_index(headers)
         
+        # If not found, try degrees (Row 1) - fallback if Email is only in first row
+        if identifier_col_index is None:
+            identifier_col_index = find_col_index(degrees)
+            
         if identifier_col_index is None:
             return None
         
@@ -1546,8 +1554,9 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         
         # Find matching row - start from row 3 (index 2)
         for idx, row in enumerate(rows[2:], start=3):
-            # Pad row with empty strings if it's shorter than headers
-            while len(row) < len(headers):
+            # Pad row with empty strings if it's shorter than headers or degrees
+            max_cols = max(len(headers), len(degrees))
+            while len(row) < max_cols:
                 row.append('')
             
             if len(row) > identifier_col_index:
@@ -1623,7 +1632,7 @@ def get_input_sheet_data(user, row_identifier, identifier_column='client_id', sh
         if not rows:
             return None
         
-        headers = rows[0] if rows else []
+        headers = [str(h).strip() for h in rows[0]] if rows else []
         
         # Find the column index for identifier
         identifier_col_index = None
@@ -1635,7 +1644,7 @@ def get_input_sheet_data(user, row_identifier, identifier_column='client_id', sh
                 identifier_col_index = idx
                 break
             # Flexible match for email (e.g. matches 'E-mail', 'Email Address')
-            if target_col == 'email' and header_lower in ['e-mail', 'e_mail', 'email address', 'e-mail address']:
+            if target_col == 'email' and (header_lower in ['e-mail', 'e_mail', 'email address', 'e-mail address'] or 'email' in header_lower):
                 identifier_col_index = idx
                 break
         
@@ -1695,7 +1704,7 @@ def get_client_row_by_email_postcode(user, email, postcode, sheet_name=None):
         if not rows:
             return None
             
-        headers = rows[0] if rows else []
+        headers = [str(h).strip() for h in rows[0]] if rows else []
 
         for idx, row in enumerate(rows[1:], start=2):
             while len(row) < len(headers):

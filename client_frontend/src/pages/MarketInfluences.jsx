@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchDashboardData } from "../services/dashboardService";
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 
 const MarketInfluences = () => {
@@ -93,7 +94,7 @@ const MarketInfluences = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Market Influences</h1>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
-            <span className="text-sm font-medium text-gray-700">{getData('1"01') || 'Wandsworth'}, {getData('1"03') || 'SW18'}</span>
+            <span className="text-sm font-medium text-gray-700">{getData('1"01').split(',')[getData('1"01').split(',').length - 1]}</span>
           </div>
           <button 
             onClick={() => {
