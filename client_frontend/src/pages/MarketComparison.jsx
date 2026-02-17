@@ -4,7 +4,6 @@ import { fetchDashboardData } from "../services/dashboardService";
 const MarketComparison = () => {
   const [selectedView, setSelectedView] = useState("comparison"); // 'comparison' or 'analysis'
   const [marketData, setMarketData] = useState({});
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -15,8 +14,6 @@ const MarketComparison = () => {
         }
       } catch (error) {
         console.error("Error loading market data:", error);
-      } finally {
-        setLoading(false);
       }
     };
     loadData();
@@ -132,14 +129,6 @@ const MarketComparison = () => {
       insight: "Low",
     },
   ], [getData]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="text-gray-600">Loading market comparison...</div>
-      </div>
-    );
-  }
 
   const InsightBar = () => (
     <div className="flex items-center gap-2">
