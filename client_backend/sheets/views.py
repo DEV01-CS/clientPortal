@@ -31,7 +31,6 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
-
 # OAuth Endpoints
 # In-memory store for OAuth state to user_id mapping
 @api_view(['GET'])

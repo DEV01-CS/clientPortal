@@ -166,3 +166,4 @@ class DeleteNotificationView(generics.DestroyAPIView):
     def get_queryset(self):
         # Ensure user can only delete their own notifications
         return self.queryset.filter(user=self.request.user)
+    

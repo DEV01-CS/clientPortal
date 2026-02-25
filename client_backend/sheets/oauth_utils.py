@@ -11,7 +11,7 @@ from datetime import timedelta, datetime
 
 # OAuth Scopes
 # Using write scopes to allow document uploads to Google Drive
-# Note: If client's Google Sheet is read-only, metadata writing will fail gracefully
+# Note: If Google Sheet is read-only, metadata writing will fail gracefully
 # but document uploads to Drive will still work
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',  # Read/write Sheets access (for metadata)
