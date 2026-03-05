@@ -3,6 +3,22 @@ import { fetchDashboardData } from "../services/dashboardService";
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 
+const renderTextAsList = (text) => {
+  if (!text || text === "Data not available") return <p className="text-sm font-medium text-gray-500">Data not available</p>;
+  const sentences = text.split('.').map(s => s.trim()).filter(s => s.length > 0);
+  
+  return (
+    <ul className="space-y-1 text-sm font-medium text-gray-900">
+      {sentences.map((sentence, index) => (
+        <li key={index} className="flex items-start gap-2">
+          <span className="text-sidebar mt-0.5">•</span>
+          <span>{sentence}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const MarketInfluences = () => {
   const [marketData, setMarketData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -28,22 +44,6 @@ const MarketInfluences = () => {
     // Try exact match, or match with different quote types
     return marketData[key] || marketData[key.replace('"', '”')] || marketData[key.replace('”', '"')] || "";
   }, [marketData]);
-
-  const renderTextAsList = (text) => {
-    if (!text || text === "Data not available") return <p className="text-sm font-medium text-gray-500">Data not available</p>;
-    const sentences = text.split('.').map(s => s.trim()).filter(s => s.length > 0);
-    
-    return (
-      <ul className="space-y-1 text-sm font-medium text-gray-900">
-        {sentences.map((sentence, index) => (
-          <li key={index} className="flex items-start gap-2">
-            <span className="text-sidebar mt-0.5">•</span>
-            <span>{sentence}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
 
   const budgetImpactsData = useMemo(() => {
     const dataString = getData('3"05');
@@ -79,6 +79,13 @@ const MarketInfluences = () => {
     }
   }, [getData]);
 
+  const handleRatingSystemClick = useCallback(() => {
+    const link = getData('3"04');
+    if (link && link !== "Data not available" && link !== "") {
+        window.open(link, '_blank');
+    }
+  }, [getData]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -97,12 +104,7 @@ const MarketInfluences = () => {
             <span className="text-sm font-medium text-gray-700">{getData('1"01').split(',')[getData('1"01').split(',').length - 1]}</span>
           </div>
           <button 
-            onClick={() => {
-                const link = getData('3"04');
-                if (link && link !== "Data not available" && link !== "") {
-                    window.open(link, '_blank');
-                }
-            }}
+            onClick={handleRatingSystemClick}
             className="px-4 py-2 bg-sidebar text-white rounded-lg font-medium hover:bg-teal-600 transition-colors"
           >
             SCUK Rating System

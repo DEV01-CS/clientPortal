@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, FileText } from 'lucide-react'
 import DocumentUploadModal from '../components/DocumentUploadModal'
 import { fetchDocuments } from '../services/documentService'
@@ -15,11 +15,7 @@ const MyDocuments = () => {
     const [selectedProperty, setSelectedProperty] = useState('All');
     const [selectedDateRange, setSelectedDateRange] = useState('All');
 
-    useEffect(() => {
-        loadDocuments();
-    }, []);
-
-    const loadDocuments = async () => {
+    const loadDocuments = useCallback(async () => {
         try {
             setIsLoading(true);
             const response = await fetchDocuments();
@@ -33,13 +29,19 @@ const MyDocuments = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadDocuments();
+    }, [loadDocuments]);
+
+    
 
     const handleUploadSuccess = () => {
         loadDocuments(); // Reload documents after successful upload
     };
 
-    const handleDocumentDownload = async (doc) => {
+    const handleDocumentDownload = useCallback(async (doc) => {
         if (!doc.drive_file?.id) {
             console.error("No file ID available for download.");
             alert("This document cannot be downloaded as it has no associated file.");
@@ -64,7 +66,7 @@ const MyDocuments = () => {
             console.error("Error downloading document:", error);
             alert("Failed to download the document. It may have been removed or there was a network issue.");
         }
-    };
+    }, []);
 
     // Memoized values for filters and search
     const uniqueTypes = useMemo(() => ['All', ...new Set(documents.map(d => d.type).filter(Boolean))], [documents]);
@@ -81,6 +83,13 @@ const MyDocuments = () => {
             // Date range filtering can be added here
         });
     }, [documents, searchTerm, selectedType, selectedProperty]);
+
+    const handleClearFilters = useCallback(() => {
+        setSearchTerm('');
+        setSelectedType('All');
+        setSelectedProperty('All');
+        setSelectedDateRange('All');
+    }, []);
 
     return (
         <div className="bg-gray-100 min-h-screen p-6 font-inter">
@@ -168,12 +177,7 @@ const MyDocuments = () => {
                     {/* Filters Button */}
                     <div>
                         <button
-                            onClick={() => {
-                                setSearchTerm('');
-                                setSelectedType('All');
-                                setSelectedProperty('All');
-                                setSelectedDateRange('All');
-                            }}
+                            onClick={handleClearFilters}
                             className="w-full bg-gray-600 text-white text-sm px-4 py-2 rounded-md flex items-center justify-center gap-2 hover:bg-gray-700">
                             Clear Filters
                             <Search className="w-4 h-4" />

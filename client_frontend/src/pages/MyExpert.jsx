@@ -51,6 +51,13 @@ const MyExpert = () => {
         return { notes, recommendations, budgetRating, buildingRequirement, approved, approvedValue };
     }, [activeTab, getData]);
 
+    const handleRatingSystemClick = useCallback(() => {
+        const link = getData('6"02');
+        if (link && link !== "Data not available") {
+            window.open(link, '_blank');
+        }
+    }, [getData]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-white">
@@ -68,15 +75,12 @@ const MyExpert = () => {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg cursor-pointer">
                         <span className="text-sm font-medium text-gray-700">
-                            {getData('5"01')}
+                            {getData('6"01')}
                         </span>
                     </div>
 
                     <button
-                        onClick={() => {
-                            const link = getData('5"02');
-                            if (link && link !== "Data not available") window.open(link, '_blank');
-                        }}
+                        onClick={handleRatingSystemClick}
                         className="px-4 py-2 bg-sidebar text-white rounded-lg text-sm font-medium"
                     >
                         SCUK Rating System
@@ -224,13 +228,13 @@ const parseNotesAndRecs = (text) => {
 };
 
 const tabMapping = {
-    0: { notesKey: '5"06', budgetRatingKey: '5"07', buildingRequirementKey: '5"08', approvedKey: '5"09' },
-    1: { notesKey: '5"10', budgetRatingKey: '5"11', buildingRequirementKey: '5"12', approvedKey: '5"13' },
-    2: { notesKey: '5"14', budgetRatingKey: '5"15', buildingRequirementKey: '5"16', approvedKey: '5"17' },
-    3: { notesKey: '5"18', budgetRatingKey: '5"19', buildingRequirementKey: '5"20', approvedKey: '5"21' },
-    4: { notesKey: '5"22', budgetRatingKey: '5"23', buildingRequirementKey: '5"24', approvedKey: '5"25' },
-    5: { notesKey: '5"26', budgetRatingKey: '5"27', buildingRequirementKey: '5"28', approvedKey: '5"29' },
-    6: { notesKey: '5"30', budgetRatingKey: '5"31', buildingRequirementKey: '5"32', approvedKey: '5"33' },
+    0: { notesKey: '6"06', budgetRatingKey: '6"07', buildingRequirementKey: '6"08', approvedKey: '6"09' },
+    1: { notesKey: '6"10', budgetRatingKey: '6"11', buildingRequirementKey: '6"12', approvedKey: '6"13' },
+    2: { notesKey: '6"14', budgetRatingKey: '6"15', buildingRequirementKey: '6"16', approvedKey: '6"17' },
+    3: { notesKey: '6"18', budgetRatingKey: '6"19', buildingRequirementKey: '6"20', approvedKey: '6"21' },
+    4: { notesKey: '6"22', budgetRatingKey: '6"23', buildingRequirementKey: '6"24', approvedKey: '6"25' },
+    5: { notesKey: '6"26', budgetRatingKey: '6"27', buildingRequirementKey: '6"28', approvedKey: '6"29' },
+    6: { notesKey: '6"30', budgetRatingKey: '6"31', buildingRequirementKey: '6"32', approvedKey: '6"33' },
 };
 
 /* ---------------- COMPONENTS ---------------- */

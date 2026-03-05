@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bell, Trash2, Loader } from 'lucide-react';
 import api from '../api/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,7 +28,7 @@ const Notifications = () => {
         fetchNotifications();
     }, [fetchUnread]);
 
-    const handleDelete = async (id) => {
+    const handleDelete = useCallback(async (id) => {
         // Optimistically update UI
         const originalNotifications = [...notifications];
         setNotifications(currentNotifications => currentNotifications.filter(n => n.id !== id));
@@ -41,9 +41,9 @@ const Notifications = () => {
             setNotifications(originalNotifications);
             alert("Could not delete notification. Please try again.");
         }
-    };
+    }, [notifications]);
 
-    const handleClearAll = async () => {
+    const handleClearAll = useCallback(async () => {
         const originalNotifications = [...notifications];
         setNotifications([]);
         try {
@@ -53,7 +53,7 @@ const Notifications = () => {
             setNotifications(originalNotifications);
             alert("Could not clear notifications. Please try again.");
         }
-    };
+    }, [notifications]);
 
     return (
         <div className="p-6 font-inter bg-white min-h-screen">

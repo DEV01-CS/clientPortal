@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchDashboardData } from "../services/dashboardService";
 
 const MyLease = () => {
@@ -29,17 +29,17 @@ const MyLease = () => {
   }, []);
 
   // Helper to safely get data by degree key (handling potential quote variations)
-  const getData = (key) => {
+  const getData = useCallback((key) => {
     if (!leaseData) return "Loading...";
     // Try exact match, or match with different quote types just in case
     return leaseData[key] || leaseData[key.replace('"', '”')] || leaseData[key.replace('”', '"')] || "Data not available";
-  };
+  }, [leaseData]);
 
   // Helper to render a range of lease items
-  const renderLeaseRange = (start, end) => {
+  const renderLeaseRange = useCallback((start, end) => {
     const items = [];
     for (let i = start; i <= end; i++) {
-      const key = `4"${i.toString().padStart(2, '0')}`;
+      const key = `5"${i.toString().padStart(2, '0')}`;
       const text = getData(key);
       if (text && text !== "Data not available" && text !== "") {
         items.push(<li key={key} className="mb-2">{text}</li>);
@@ -50,14 +50,19 @@ const MyLease = () => {
     ) : (
       <p className="text-sm text-gray-500">Data not available</p>
     );
-  };
+  }, [getData]);
 
-  // Generate list items for the right panel (4"02 to 4"38)
-  const rightPanelItems = [];
-  for (let i = 2; i <= 38; i++) {
-    rightPanelItems.push({ key: `4"${i.toString().padStart(2, '0')}`, id: i });
-  }
+  // Generate list items for the right panel (5"02 to 5"38)
+  const rightPanelItems = useMemo(() => {
+    const items = [];
+    for (let i = 2; i <= 38; i++) {
+      items.push({ key: `5"${i.toString().padStart(2, '0')}`, id: i });
+    }
+    return items;
+  }, []);
   
+  const createToggleHandler = useCallback((setter, value) => () => setter(prev => (prev === value ? false : value)), []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
@@ -80,7 +85,7 @@ const MyLease = () => {
           <Accordion
             title="Property Demise"
             isOpen={openSection1 === true}
-            onClick={() => setOpenSection1(openSection1 === true ? false : true)}
+            onClick={createToggleHandler(setOpenSection1, true)}
             >
             {renderLeaseRange(2, 4)}
           </Accordion>
@@ -88,7 +93,7 @@ const MyLease = () => {
           <Accordion
             title="Service Charge Recoverable"
             isOpen={openSection2 === true}
-            onClick={() => setOpenSection2(openSection2 === true ? false : true)}
+            onClick={createToggleHandler(setOpenSection2, true)}
           >
             {renderLeaseRange(5, 16)}
           </Accordion>
@@ -96,7 +101,7 @@ const MyLease = () => {
           <Accordion
             title="Health & Safety Recoverable"
             isOpen={openSection3 === true}
-            onClick={() => setOpenSection3(openSection3 === true ? false : true)}
+            onClick={createToggleHandler(setOpenSection3, true)}
             >
             {renderLeaseRange(17, 26)}
           </Accordion>
@@ -104,7 +109,7 @@ const MyLease = () => {
           <Accordion
             title="Non-Recoverables"
             isOpen={openSection4 === true}
-            onClick={() => setOpenSection4(openSection4 === true ? false : true)}
+            onClick={createToggleHandler(setOpenSection4, true)}
             >
             {renderLeaseRange(27, 34)}
           </Accordion>
@@ -112,7 +117,7 @@ const MyLease = () => {
           <Accordion
             title="Sweeper Clauses"
             isOpen={openSection5 === true}
-            onClick={() => setOpenSection5(openSection5 === true ? false : true)}
+            onClick={createToggleHandler(setOpenSection5, true)}
             >
             {renderLeaseRange(35, 38)}
           </Accordion>

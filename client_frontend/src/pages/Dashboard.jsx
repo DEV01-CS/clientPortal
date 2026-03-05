@@ -6,7 +6,7 @@ import {
   Paperclip,
   Send,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { sendChatbotMessage } from "../services/chatbotService";
 import { fetchDashboardData } from "../services/dashboardService";
@@ -15,6 +15,18 @@ import LocationMap from "../components/LocationMap";
 import DocumentUploadModal from "../components/DocumentUploadModal";
 // Assuming a central API client setup for making authenticated requests
 import api from "../services/api";
+
+const getField = (data, fieldVariations, defaultValue) => {
+  if (!data) return defaultValue;
+  for (const field of fieldVariations) {
+    if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
+      return data[field];
+    }
+  }
+  return defaultValue;
+};
+
+
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -27,6 +39,25 @@ const Dashboard = () => {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef(null);
+
+  // Load documents
+  const loadDocuments = useCallback(async () => {
+    try {
+      const response = await fetchDocuments();
+      if (response.documents) {
+        setDocuments(response.documents.slice(0, 3)); // Show only first 3 in dashboard
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error fetching documents:", error);
+        // Check if it's an admin OAuth error
+        if (error.response?.status === 401 && error.response?.data?.error === "Admin Google account not connected") {
+          console.warn("Admin Google account not connected");
+        }
+      }
+    }
+  }, []);
+
 
   // Dashboard data from Google Sheets
   const [dashboardData, setDashboardData] = useState({
@@ -61,39 +92,28 @@ const Dashboard = () => {
         if (response.data) {
           const data = response.data;
 
-          // Map Google Sheets columns to dashboard fields
-          // Handle different possible column name variations (optimized with helper function)
-          const getField = (fieldVariations, defaultValue) => {
-            for (const field of fieldVariations) {
-              if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
-                return data[field];
-              }
-            }
-            return defaultValue;
-          };
-
-          const propertySize = getField(['property_size', 'Property Size', 'propertySize', '1"02'], "N/A");
-          const bedrooms = getField(['bedrooms', 'Bedrooms'], "N/A");
-          const location = getField(['postcode', 'postal_code', 'Postal Code', 'location', 'Location', '1"03'], "N/A");
-          const locationDesc = getField(['city', 'City', 'location_desc', '1"01', 'Address Box'], "N/A");
-          const serviceCharge = getField(['service_charge', 'Service Charge', 'serviceCharge', '1"04'], "N/A");
-          const serviceAmenities = getField(['service_amenities', 'Services & Amenities', 'amenities', '1"05'], "N/A");
-          const state = getField(['state', 'State', 'region', 'Region'], "");
-          const locationMap = getField(['location_map', 'Location Map', 'locationMap', 'location_map'], null);
+          const propertySize = getField(data, ['property_size', 'Property Size', 'propertySize', '1"02'], "N/A");
+          const bedrooms = getField(data, ['bedrooms', 'Bedrooms','1"15'], "N/A");
+          const location = getField(data, ['postcode', 'postal_code', 'Postal Code', 'location', 'Location', '1"03'], "N/A");
+          const locationDesc = getField(data, ['city', 'City', 'location_desc', '1"01', 'Address Box'], "N/A");
+          const serviceCharge = getField(data, ['service_charge', 'Service Charge', 'serviceCharge', '1"04'], "N/A");
+          const serviceAmenities = getField(data, ['service_amenities', 'Services & Amenities', 'amenities', '1"05'], "N/A");
+          const state = getField(data, ['state', 'State', 'region', 'Region'], "");
+          const locationMap = getField(data, ['location_map', 'Location Map', 'locationMap', 'location_map'], null);
           
           // ownership fields
-          const ownershipLandlord = getField(['ownership_landlord', 'Ownership - Landlord', 'landlord','1"07'], "N/A");
-          const ownershipLeaseholder = getField(['ownership_leaseholder', 'Ownership - Leaseholder', 'leaseholder','1"06'], "N/A");
-          const ownershipManagingAgents = getField(['ownership_managing_agents', 'Ownership - Managing Agents', 'managing_agents','1"08'], "N/A");
-          const ownershipResidentsAssociation = getField(['ownership_residents_association', 'Ownership - Residents Association', 'residents_association','1"09'], "N/A");
+          const ownershipLandlord = getField(data, ['ownership_landlord', 'Ownership - Landlord', 'landlord','1"07'], "N/A");
+          const ownershipLeaseholder = getField(data, ['ownership_leaseholder', 'Ownership - Leaseholder', 'leaseholder','1"06'], "N/A");
+          const ownershipManagingAgents = getField(data, ['ownership_managing_agents', 'Ownership - Managing Agents', 'managing_agents','1"08'], "N/A");
+          const ownershipResidentsAssociation = getField(data, ['ownership_residents_association', 'Ownership - Residents Association', 'residents_association','1"09'], "N/A");
 
           //keydate fields
-          const keydateleaseTerm = getField(['Key Dates - Lease Term', 'lease_term','1"10'], "N/A");
-          const keydateServiceChargeYearEnd = getField(['Key Dates - Service Charge Year End', 'service_charge_year_end','1"11'], "N/A");
-          const keydatePaymentDates = getField(['Key Dates - Payment Dates', 'payment_dates','1"12'], "N/A");
+          const keydateleaseTerm = getField(data, ['Key Dates - Lease Term', 'lease_term','1"10'], "N/A");
+          const keydateServiceChargeYearEnd = getField(data, ['Key Dates - Service Charge Year End', 'service_charge_year_end','1"11'], "N/A");
+          const keydatePaymentDates = getField(data, ['Key Dates - Payment Dates', 'payment_dates','1"12'], "N/A");
 
           //score-bar
-          const scoreBar = getField(['Your Score', 'your_score','1"13'], "N/A");
+          const scoreBar = getField(data, ['Your Score', 'your_score','1"13'], "N/A");
 
           setDashboardData({
             propertySize: propertySize,
@@ -127,31 +147,14 @@ const Dashboard = () => {
 
     loadDashboardData();
     loadDocuments();
-  }, []);
+  }, [loadDocuments]);
 
-  // Load documents
-  const loadDocuments = async () => {
-    try {
-      const response = await fetchDocuments();
-      if (response.documents) {
-        setDocuments(response.documents.slice(0, 3)); // Show only first 3 in dashboard
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error("Error fetching documents:", error);
-        // Check if it's an admin OAuth error
-        if (error.response?.status === 401 && error.response?.data?.error === "Admin Google account not connected") {
-          console.warn("Admin Google account not connected");
-        }
-      }
-    }
-  };
-
+  
   const handleDocumentUploadSuccess = () => {
     loadDocuments(); // Reload documents after successful upload
   };
 
-  const handleDocumentDownload = async (doc) => {
+  const handleDocumentDownload = useCallback(async (doc) => {
     if (!doc.drive_file?.id) {
       console.error("No file ID available for download.");
       alert("This document cannot be downloaded as it has no associated file.");
@@ -178,9 +181,9 @@ const Dashboard = () => {
       console.error("Error downloading document:", error);
       alert("Failed to download the document. It may have been removed or there was a network issue.");
     }
-  };
+  }, []);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!inputMessage.trim()) return;
 
     const userMessage = inputMessage.trim();
@@ -240,7 +243,7 @@ const Dashboard = () => {
         },
       ]);
     }
-  };
+  }, [inputMessage]);
 
   return (
     <div className="min-h-screen p-6 bg-white font-inter">

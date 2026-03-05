@@ -4,6 +4,7 @@ import { fetchDashboardData } from "../services/dashboardService";
 const MarketComparison = () => {
   const [selectedView, setSelectedView] = useState("comparison"); // 'comparison' or 'analysis'
   const [marketData, setMarketData] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -14,6 +15,8 @@ const MarketComparison = () => {
         }
       } catch (error) {
         console.error("Error loading market data:", error);
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
@@ -28,118 +31,115 @@ const MarketComparison = () => {
   const comparisonData = useMemo(() => [
     {
       category: "Service Charge (£/unit/year)",
-      yourProperty: getData("Service Charge") || getData('1"04') || "N/A",
-      market: "£2,400",
-      insight: "Low",
+      yourProperty: getData('4"01') || "N/A",
+      market: getData('4"18') || "N/A",
+      insight: getData('4"35') || "N/A",
     },
     {
       category: "Service Charge per sqm (£/sqm)",
-      yourProperty: getData("Service Charge per sqm") || "N/A",
-      market: "£3.20",
-      insight: "Low",
+      yourProperty: getData('4"02') || "N/A",
+      market: getData('4"19') || "N/A",
+      insight: getData('4"36') || "N/A",
     },
     {
       category: "Total Annual Budget",
-      yourProperty: getData("Total Annual Budget") || "N/A",
-      market: "£350,000",
-      insight: "Low",
+      yourProperty: getData('4"03') || "N/A",
+      market: getData('4"20') || "N/A",
+      insight: getData('4"37') || "N/A",
     },
     {
       category: "Budget Change (YoY)",
-      yourProperty: getData("Budget Change (YoY)") || "N/A",
-      market: "+3%",
-      insight: "Low",
+      yourProperty: getData('4"04') || "N/A",
+      market: getData('4"21') || "N/A",
+      insight: getData('4"38') || "N/A",
     },
     {
       category: "Management Fee (%)",
-      yourProperty: getData("Management Fee (%)") || "N/A",
-      market: "10%",
-      insight: "Low",
+      yourProperty: getData('4"05') || "N/A",
+      market: getData('4"22') || "N/A",
+      insight: getData('4"39') || "N/A",
     },
     {
       category: "Staffing Costs (%)",
-      yourProperty: getData("Staffing Costs (%)") || "N/A",
-      market: "25%",
-      insight: "Low",
+      yourProperty: getData('4"06') || "N/A",
+      market: getData('4"23') || "N/A",
+      insight: getData('4"40') || "N/A",
     },
     {
       category: "Utilities Costs (%)",
-      yourProperty: getData("Utilities Costs (%)") || "N/A",
-      market: "18%",
-      insight: "Low",
+      yourProperty: getData('4"07') || "N/A",
+      market: getData('4"24') || "N/A",
+      insight: getData('4"41') || "N/A",
     },
     {
       category: "Maintenance & Repairs (%)",
-      yourProperty: getData("Maintenance & Repairs (%)") || "N/A",
-      market: "20%",
-      insight: "Low",
+      yourProperty: getData('4"08') || "N/A",
+      market: getData('4"25') || "N/A",
+      insight: getData('4"42') || "N/A",
     },
     {
       category: "Sinking / Reserve Fund (£/unit)",
-      yourProperty: getData("Sinking / Reserve Fund") || "N/A",
-      market: "£1,000",
-      insight: "Low",
+      yourProperty: getData('4"09') || "N/A",
+      market: getData('4"26') || "N/A",
+      insight: getData('4"43') || "N/A",
     },
     {
       category: "Cleaning & Concierge Costs (£/unit)",
-      yourProperty: getData("Cleaning & Concierge Costs") || "N/A",
-      market: "£750",
-      insight: "Low",
+      yourProperty: getData('4"10') || "N/A",
+      market: getData('4"27') || "N/A",
+      insight: getData('4"44') || "N/A",
     },
     {
       category: "Insurance Cost (£/unit)",
-      yourProperty: getData("Insurance Cost") || "N/A",
-      market: "£280",
-      insight: "Low",
+      yourProperty: getData('4"11') || "N/A",
+      market: getData('4"28') || "N/A",
+      insight: getData('4"45') || "N/A",
     },
     {
       category: "Number of Units",
-      yourProperty: getData("Property Size") || getData('1"02') || "N/A",
-      market: "150",
-      insight: "Low",
+      yourProperty: getData('4"12') || "N/A",
+      market: getData('4"29') || "N/A",
+      insight: getData('4"46') || "N/A",
     },
     {
       category: "Building Type",
-      yourProperty: getData("Building Type") || "N/A",
-      market: "Residential",
-      insight: "Low",
+      yourProperty: getData('4"13') || "N/A",
+      market: getData('4"30') || "N/A",
+      insight: getData('4"47') || "N/A",
     },
     {
       category: "Building Age",
-      yourProperty: getData("Building Age") || "N/A",
-      market: "25 years",
-      insight: "Low",
+      yourProperty: getData('4"14') || "N/A",
+      market: getData('4"31') || "N/A",
+      insight: getData('4"48') || "N/A",
     },
     {
       category: "Lift / M&E Complexity",
-      yourProperty: getData("Lift / M&E Complexity") || "N/A",
-      market: "Standard",
-      insight: "Low",
+      yourProperty: getData('4"15') || "N/A",
+      market: getData('4"32') || "N/A",
+      insight: getData('4"49') || "N/A",
     },
     {
       category: "Geographic Location",
-      yourProperty: getData("Location") || getData('1"03') || "N/A",
-      market: "SW18",
-      insight: "Low",
+      yourProperty: getData('4"16') || "N/A",
+      market: getData('4"33') || "N/A",
+      insight: getData('4"50') || "N/A",
     },
     {
       category: "Overall Cost Position",
-      yourProperty: getData("Overall Cost Position") || "N/A",
-      market: "Medium",
-      insight: "Low",
+      yourProperty: getData('4"17') || "N/A",
+      market: getData('4"34') || "N/A",
+      insight: getData('4"51') || "N/A",
     },
   ], [getData]);
 
-  const InsightBar = () => (
-    <div className="flex items-center gap-2">
-      <div className="flex h-4 w-24 rounded overflow-hidden">
-        <div className="bg-green-500 w-1/6"></div>
-        <div className="bg-yellow-400 w-1/3"></div>
-        <div className="bg-red-500 w-1/2"></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-gray-600">Loading market comparison...</div>
       </div>
-      <span className="text-sm text-gray-600">Low</span>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="font-inter space-y-6">
@@ -205,15 +205,15 @@ const MarketComparison = () => {
               <tbody>
                 {comparisonData.map((row, index) => (
                   <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="py-4 px-6 text-sm text-gray-900">{row.category}</td>
-                    <td className="py-4 px-6 text-sm text-center text-white bg-sidebar">
+                    <td className="py-3 px-6 text-sm text-gray-900">{row.category}</td>
+                    <td className="py-3 px-6 text-sm text-center text-white bg-sidebar">
                       {row.yourProperty}
                     </td>
-                    <td className="py-4 px-6 text-sm text-center text-gray-900">
+                    <td className="py-3 px-6 text-sm text-center text-gray-900">
                       {row.market}
                     </td>
-                    <td className="py-4 px-6 text-sm text-center">
-                      <InsightBar />
+                    <td className="py-3 px-6 text-sm text-center">
+                      <InsightIndicator level={row.insight} />
                     </td>
                   </tr>
                 ))}
@@ -230,139 +230,64 @@ const MarketComparison = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Analysis Points */}
             <div className="bg-white rounded-lg p-6 shadow-sm space-y-6">
-              <div>
+              <div >
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Age</h3>
-                <ul className="space-y-3 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <span className="text-sidebar mt-1">•</span>
-                    <span>
-                      Your property is more than 30 years old. This increases the
-                      maintenance and reserve fund budget required for the structure,
-                      roof and plant.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-sidebar mt-1">•</span>
-                    <span>
-                      Your reserve fund is likely to be high to cover major works
-                      projects due in the near future.
-                    </span>
-                  </li>
-                </ul>
+                <p className="text-sm text-gray-700">
+                  The property's age is listed as <span className="font-semibold">{getData('4"14') || 'not specified'}</span>. Older buildings may require higher maintenance and reserve fund contributions for structural elements, roofing, and plant machinery.
+                </p>
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Type & Size
                 </h3>
-                <ul className="space-y-3 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <span className="text-sidebar mt-1">•</span>
-                    <span>
-                      Your building is small so you will not benefit from being able
-                      to spread budgets across a large number of flats.
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-sidebar mt-1">•</span>
-                    <span>
-                      It is not a tall high risk building so additional compliance
-                      costs will not impact your budget.
-                    </span>
-                  </li>
-                </ul>
+                <p className="text-sm text-gray-700">
+                  This is a <span className="font-semibold">{getData('4"13') || 'unspecified'}</span> type building with <span className="font-semibold">{getData('4"12') || 'an unknown number of'}</span> units. The size of the building can impact economies of scale for service charges.
+                </p>
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Services & Amenities
                 </h3>
-                <ul className="space-y-3 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <span className="text-sidebar mt-1">•</span>
-                    <span>
-                      You have a concierge, this services does not required high
-                      maintenance or reserve fund. But employing staff can be expensive.
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="text-center pt-6">
-                <span className="text-2xl font-bold text-sidebar">Premium</span>
+                <p className="text-sm text-gray-700">
+                  The staffing costs are <span className="font-semibold">{getData('4"06') || 'not specified'}</span> of the budget, and cleaning/concierge costs are <span className="font-semibold">{getData('4"10') || 'not specified'}</span>. Amenities like these can be a significant driver of service charge costs.
+                </p>
               </div>
             </div>
 
             {/* Right Column - Categories and CTA */}
-            <div className="bg-gray-100 rounded-lg p-6 shadow-sm space-y-6">
+            <div className="bg-gray-50 rounded-lg p-6 shadow-sm space-y-6 flex flex-col">
               <div>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center">
-                    <h4 className="text-sm font-semibold text-gray-900">Age</h4>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-sm font-semibold text-gray-900">
-                      Type & Size
-                    </h4>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-sm font-semibold text-gray-900">
-                      Services & Amenities
-                    </h4>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <CategoryItem name="Staff" />
-                  <CategoryItem name="Contracts & Maintenance" />
-                  <CategoryItem name="Utilities" />
-                  <CategoryItem name="Insurance" />
-                  <CategoryItem name="Professional Fees" />
-                  <CategoryItem name="Reserve Fund" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown</h3>
+                <div className="space-y-3">
+                  <AnalysisCategoryItem name="Staffing Costs" value={getData('4"06')} />
+                  <AnalysisCategoryItem name="Maintenance & Repairs" value={getData('4"08')} />
+                  <AnalysisCategoryItem name="Utilities Costs" value={getData('4"07')} />
+                  <AnalysisCategoryItem name="Insurance Cost" value={getData('4"11')} />
+                  <AnalysisCategoryItem name="Management Fee" value={getData('4"05')} />
+                  <AnalysisCategoryItem name="Sinking / Reserve Fund" value={getData('4"09')} />
                 </div>
               </div>
 
               {/* Premium CTA */}
-              <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg p-6 text-white">
-                <p className="text-sm mb-2">
+              <div className="mt-auto bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg p-6 text-white text-center">
+                <p className="text-lg font-semibold mb-2">
                   Subscribe to <span className="font-bold text-sidebar">Premium</span>
                 </p>
                 <p className="text-sm text-gray-300">
-                  to find out next steps and gain expert support
+                  to find out next steps and gain expert support.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Notes and Recommendations */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Notes Section */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Notes</h3>
-              <ul className="space-y-3 text-sm text-gray-700">
-                <li className="flex items-start gap-2">
-                  <span className="text-sidebar mt-1">•</span>
-                  <span>
-                    The staffing needs for your building are low, as your building has
-                    a 12-hour concierge, but no leisure staff or on-site team.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-sidebar mt-1">•</span>
-                  <span>
-                    Your budget for staff service charge aligns with the requirements
-                    of your building.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-sidebar mt-1">•</span>
-                  <span>
-                    The budget may be impacted by staff employment costs if staff are
-                    paid above market wages, agency staff are used regularly or VAT
-                    is due.
-                  </span>
-                </li>
-              </ul>
+              {renderTextAsList(getData('4"52'))}
             </div>
 
             {/* Recommendation Section */}
@@ -370,26 +295,7 @@ const MarketComparison = () => {
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 Recommendation
               </h3>
-              <div className="space-y-3 text-sm text-gray-700">
-                <p>
-                  To reduce the impact of staff employment on your service charge the
-                  following actions could be considered:
-                </p>
-                <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>
-                    Reduce reliance on temporary agency staff as they are more
-                    expensive.
-                  </li>
-                  <li>
-                    Freeholder directly employs staff so VAT is not due. This is not
-                    always possible.
-                  </li>
-                  <li>Improve efficiency streamlining roles.</li>
-                  <li>
-                    Reduce reliance on overtime by improving shift planning.
-                  </li>
-                </ol>
-              </div>
+              {renderTextAsList(getData('4"53'))}
             </div>
           </div>
         </div>
@@ -398,10 +304,66 @@ const MarketComparison = () => {
   );
 };
 
-const CategoryItem = ({ name }) => (
-  <div className="px-4 py-2 bg-white rounded-lg text-sm text-gray-900 font-medium">
-    {name}
+const AnalysisCategoryItem = ({ name, value }) => (
+  <div className="px-4 py-3 bg-white rounded-lg flex justify-between items-center shadow-sm">
+    <span className="text-sm text-gray-800 font-medium">{name}</span>
+    <span className="text-sm text-sidebar font-semibold">{value || 'N/A'}</span>
   </div>
 );
+
+const InsightIndicator = ({ level }) => {
+  if (!level || level === "N/A" || level.trim() === "") {
+    return <span className="text-sm text-gray-500">N/A</span>;
+  }
+
+  const levelLower = level.toLowerCase();
+  let color = 'bg-gray-400';
+  let position = '50%'; // Default to medium
+
+  if (levelLower.includes('very low')) {
+    color = 'bg-green-500';
+    position = '10%';
+  } else if (levelLower.includes('low')) {
+    color = 'bg-teal-400';
+    position = '30%';
+  } else if (levelLower.includes('medium')) {
+    color = 'bg-yellow-400';
+    position = '50%';
+  } else if (levelLower.includes('high')) {
+    color = 'bg-orange-500';
+    position = '70%';
+  } else if (levelLower.includes('very high')) {
+    color = 'bg-red-500';
+    position = '90%';
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center space-y-2">
+      <div className="w-28 bg-gray-200 rounded-full h-2.5 relative">
+        <div className={`absolute top-0 h-2.5 rounded-full ${color}`} style={{ width: position }}></div>
+      </div>
+      <span className="text-xs text-gray-600">{level}</span>
+    </div>
+  );
+};
+
+const renderTextAsList = (text) => {
+  if (!text || text === "Data not available" || text.trim() === "") {
+    return <p className="text-sm text-gray-500">Data not available</p>;
+  }
+  // Split by newline or dot followed by a space to handle different formatting
+  const sentences = text.split(/(?:\r\n|\n|\.\s+)/).map(s => s.trim()).filter(s => s.length > 0);
+  
+  return (
+    <ul className="space-y-3 text-sm text-gray-700">
+      {sentences.map((sentence, index) => (
+        <li key={index} className="flex items-start gap-2">
+          <span className="text-sidebar mt-1">•</span>
+          <span>{sentence}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 export default MarketComparison;
