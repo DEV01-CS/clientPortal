@@ -6,6 +6,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    type: "",
     file: null,
   });
   const [isUploading, setIsUploading] = useState(false);
@@ -36,6 +37,11 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
       return;
     }
 
+    if (!formData.type) {
+      setError("Please select a document type");
+      return;
+    }
+
     if (!formData.file) {
       setError("Please select a file to upload");
       return;
@@ -47,7 +53,8 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
       const response = await uploadDocument(
         formData.file,
         formData.name,
-        formData.description
+        formData.description,
+        formData.type
       );
 
       if (response.success) {
@@ -63,6 +70,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
         setFormData({
           name: "",
           description: "",
+          type: "",
           file: null,
         });
         // Reset file input
@@ -102,6 +110,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
       setFormData({
         name: "",
         description: "",
+        type: "",
         file: null,
       });
       setError("");
@@ -148,6 +157,34 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
               required
               disabled={isUploading}
             />
+          </div>
+
+
+          {/* Document Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Document Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) =>
+                setFormData({ ...formData, type: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sidebar"
+              required
+              disabled={isUploading}
+            >
+              <option value="">Select document type</option>
+              <option value="Lease">Lease</option>
+              <option value="Budget">Budget</option>
+              <option value="Year End Accounts">Year End Accounts</option>
+              <option value="Other">Other</option>
+            </select>
+            {formData.type === "Budget" || formData.type === "Year End Accounts" ? (
+              <p className="text-xs text-gray-500 mt-1">
+                Year Document Relates To
+              </p>
+            ) : null}
           </div>
 
           {/* Description */}
@@ -247,7 +284,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
             </button>
             <button
               type="submit"
-              disabled={isUploading || !formData.file || !formData.name.trim()}
+              disabled={isUploading || !formData.file || !formData.name.trim() || !formData.type}
               className="flex-1 px-4 py-2 bg-sidebar text-white rounded-md hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isUploading ? (

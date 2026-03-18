@@ -2,9 +2,11 @@ import {
   Ruler,
   MapPin,
   Building2,
-  Code,
+  Sparkles,
   Paperclip,
   Send,
+  Home,
+  ChevronDown,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../auth/AuthContext";
@@ -45,6 +47,7 @@ const Dashboard = () => {
     try {
       const response = await fetchDocuments();
       if (response.documents) {
+
         setDocuments(response.documents.slice(0, 3)); // Show only first 3 in dashboard
       }
     } catch (error) {
@@ -61,16 +64,18 @@ const Dashboard = () => {
 
   // Dashboard data from Google Sheets
   const [dashboardData, setDashboardData] = useState({
-    propertySize: "710 Sq2",
-    bedrooms: "2 Bedroom",
-    location: "SW18 1UZ",
-    locationDesc: "Wandsworth",
-    city: "Wandsworth",
-    state: "",
-    serviceCharge: "£2,551 / Year",
-    serviceAmenities: "Concierge",
-    locationMap: null, // Lat/Long coordinates from Column P
-    scoreBar: "N/A",
+    propertySize: "N/A",
+    bedrooms: "N/A",
+    bedroomsNumber: "N/A",
+    location: "N/A",
+    locationDesc: "N/A",
+    city: "N/A",
+    state: "N/A",
+    serviceCharge: "N/A",
+    serviceChargeIncludes: "N/A",
+    serviceAmenities: "N/A",
+    locationMap: null,
+    scoreBar: "",
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [documents, setDocuments] = useState([]);
@@ -88,15 +93,16 @@ const Dashboard = () => {
       try {
         setIsLoadingData(true);
         const response = await fetchDashboardData();
-
         if (response.data) {
           const data = response.data;
 
           const propertySize = getField(data, ['property_size', 'Property Size', 'propertySize', '1"02'], "N/A");
           const bedrooms = getField(data, ['bedrooms', 'Bedrooms','1"15'], "N/A");
+          const bedroomsNumber = bedrooms !== "N/A" ? bedrooms : "2";
           const location = getField(data, ['postcode', 'postal_code', 'Postal Code', 'location', 'Location', '1"03'], "N/A");
           const locationDesc = getField(data, ['city', 'City', 'location_desc', '1"01', 'Address Box'], "N/A");
           const serviceCharge = getField(data, ['service_charge', 'Service Charge', 'serviceCharge', '1"04'], "N/A");
+          const serviceChargeIncludes = getField(data, ['service_charge_includes', 'Service Charge Includes', 'serviceChargeIncludes', '1"14'], "");
           const serviceAmenities = getField(data, ['service_amenities', 'Services & Amenities', 'amenities', '1"05'], "N/A");
           const state = getField(data, ['state', 'State', 'region', 'Region'], "");
           const locationMap = getField(data, ['location_map', 'Location Map', 'locationMap', 'location_map'], null);
@@ -118,11 +124,13 @@ const Dashboard = () => {
           setDashboardData({
             propertySize: propertySize,
             bedrooms: bedrooms ? `${bedrooms} Bedroom${bedrooms !== '1' ? 's' : ''}` : "2 Bedroom",
+            bedroomsNumber: bedroomsNumber,
             location: location,
             locationDesc: locationDesc,
             city: locationDesc,
             state: state,
-            serviceCharge: serviceCharge.includes('/') ? serviceCharge : `£${serviceCharge} / Year`,
+            serviceCharge: formatServiceCharge(serviceCharge, propertySize),
+            serviceChargeIncludes: serviceChargeIncludes,
             serviceAmenities: serviceAmenities,
             locationMap: locationMap,
             ownershipLandlord: ownershipLandlord,
@@ -246,15 +254,30 @@ const Dashboard = () => {
   }, [inputMessage]);
 
   return (
-    <div className="min-h-screen p-6 bg-white font-inter">
+    <div className="min-h-screen p-6 bg-white font-quicksand">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-start mb-6 gap-4">
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">
-          Hello, <span className="text-sidebar">{userName}</span>
+          Hello,{" "}
+          <span className="text-sidebar">
+            {userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase()}
+          </span>
         </h1>
 
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg text-sm cursor-pointer">
-          {dashboardData.city.split(',')[dashboardData.city.split(',').length - 1]}{dashboardData.state ? `, ${dashboardData.state}` : ''}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-lg text-sm cursor-pointer">
+              <Home className="w-4 h-4 text-gray-600" />
+              <span>{dashboardData.locationDesc}, {dashboardData.location}</span>
+            </div>
+            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-gray-200"></div>
+          </div>
+          
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors">
+            <Home className="w-4 h-4" />
+            <span>My Properties</span>
+            <ChevronDown className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -284,10 +307,20 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <InfoCard icon={Ruler} title="Property Size" value={dashboardData.propertySize} desc={dashboardData.bedrooms} />
+          <InfoCard 
+            icon={Ruler} 
+            title="Property Size" 
+            value={`${dashboardData.propertySize} Square Foot`} 
+            desc={`${dashboardData.bedroomsNumber || 'N/A'} beds`} 
+          />
           <InfoCard icon={MapPin} title="Location" value={dashboardData.location} desc={dashboardData.locationDesc} />
-          <InfoCard icon={Building2} title="Service Charge" value={dashboardData.serviceCharge} />
-          <InfoCard icon={Code} title="Services & Amenities" value={dashboardData.serviceAmenities} />
+          <InfoCard 
+            icon={Building2} 
+            title="Service Charge" 
+            value={dashboardData.serviceCharge}
+            // desc={dashboardData.serviceChargeIncludes}
+          />
+          <InfoCard icon={Sparkles} title="Services & Amenities" value={dashboardData.serviceAmenities} />
         </div>
       )}
 
@@ -296,17 +329,24 @@ const Dashboard = () => {
         {/* LEFT COLUMN - Ownership and Key Dates */}
         <div className="space-y-6">
           <Card title="Ownership">
-            <KeyValue label="Leaseholder" value={dashboardData.ownershipLeaseholder} />
             <KeyValue label="Landlord" value={dashboardData.ownershipLandlord} />
+            <KeyValue label="Leaseholder" value={dashboardData.ownershipLeaseholder} />
             <KeyValue label="Managing Agent" value={dashboardData.ownershipManagingAgents} />
             <KeyValue label="Residents Association" value={dashboardData.ownershipResidentsAssociation} />
           </Card>
 
           <Card title="Key Dates">
-            <KeyValue label="Lease Term" value={dashboardData.keydateleaseTerm} />
+            <KeyValue label="Lease Term Remaining" value={dashboardData.keydateleaseTerm} />
             <KeyValue label="Service Charge Year End" value={dashboardData.keydateServiceChargeYearEnd} />
-            <KeyValue label="Payment Dates" value={dashboardData.keydatePaymentDates}/>
+            <KeyValue label="Payment Dates" value={formatPaymentDates(dashboardData.keydatePaymentDates)}/>
           </Card>
+
+          {/* Document Upload Modal */}
+          <DocumentUploadModal
+            isOpen={isDocumentModalOpen}
+            onClose={() => setIsDocumentModalOpen(false)}
+            onUploadSuccess={handleDocumentUploadSuccess}
+          />
         </div>  
 
         {/* RIGHT COLUMN - Score Bar (spans 3 columns) */}
@@ -340,7 +380,7 @@ const Dashboard = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* MAP */}
-            <div className="lg:col-span-2 bg-gray-100 rounded-lg p-6 shadow-sm">
+            <div className="lg:col-span-2 bg-gray-100 rounded-lg p-6 shadow-sm flex flex-col">
               <div className="flex justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Location</h3>
                 <span className="text-sm text-gray-500">
@@ -349,7 +389,7 @@ const Dashboard = () => {
               </div>
 
               {isLoadingData ? (
-                <div className="h-72 bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="flex-1 bg-gray-200 rounded-lg flex items-center justify-center">
                   <div className="text-gray-500">Loading map...</div>
                 </div>
               ) : (
@@ -357,24 +397,24 @@ const Dashboard = () => {
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboardData.location)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block cursor-pointer"
+                  className="flex-1 cursor-pointer"
                 >
                   <LocationMap
                     latitude={dashboardData.locationMap}
                     longitude={null}
                     location={`${dashboardData.locationDesc}, ${dashboardData.location}`}
                     postcode={dashboardData.location}
-                    height="288px"
+                    height="100%"
                   />
                 </a>
               )}
             </div>
 
             {/* DOCS + CHAT */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 flex flex-col gap-4">
               {/* DOCS */}
-              <Card>
-                <div className="flex justify-between items-center mb-4">
+              <div className="bg-gray-100 rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-center mb-3">
                   <h3 className="font-semibold text-gray-900">Documents</h3>
                   <button
                     onClick={() => setIsDocumentModalOpen(true)}
@@ -384,32 +424,28 @@ const Dashboard = () => {
                   </button>
                 </div>
                 {documents.length === 0 ? (
-                  <div className="text-sm text-gray-500 text-center py-4">
+                  <div className="text-sm text-gray-500 text-center py-3">
                     No documents yet
                   </div>
                 ) : (
-                  documents.map((doc, index) => (
-                    <DocItem
-                      key={index}
-                      name={doc.name || 'Untitled Document'}
-                      onClick={() => handleDocumentDownload(doc)}
-                    />
-                  ))
+                  <div className="space-y-2">
+                    {documents.map((doc, index) => (
+                      <DocItem
+                        key={index}
+                        name={doc.name || 'Untitled Document'}
+                        type={doc.type}
+                        onClick={() => handleDocumentDownload(doc)}
+                      />
+                    ))}
+                  </div>
                 )}
-              </Card>
-
-              {/* Document Upload Modal */}
-              <DocumentUploadModal
-                isOpen={isDocumentModalOpen}
-                onClose={() => setIsDocumentModalOpen(false)}
-                onUploadSuccess={handleDocumentUploadSuccess}
-              />
+              </div>
 
               {/* CHAT */}
-              <div className="bg-gray-100 rounded-lg p-4 shadow-sm h-[320px] flex flex-col">
+              <div className="bg-gray-100 rounded-lg p-4 shadow-sm flex flex-col h-[320px]">
                 <h3 className="font-semibold text-gray-900 mb-3">Chat</h3>
 
-                <div className="flex-1 space-y-3 overflow-y-auto mb-3">
+                <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1">
                   {messages.map((msg, index) => (
                     <ChatBubble key={index} text={msg.text} incoming={msg.incoming} />
                   ))}
@@ -461,6 +497,41 @@ const getScorePosition = (score) => {
   }
 };
 
+const formatPaymentDates = (dates) => {
+  if (!dates || dates === "N/A") return dates;
+  
+  return dates
+    .split(' and ')
+    .map(date => {
+      const words = date.trim().split(' ');
+      return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    })
+    .join(' and ');
+};
+
+const formatServiceCharge = (serviceCharge, propertySize) => {
+  if (!serviceCharge || serviceCharge === "N/A") return "N/A";
+
+  // Strip any £ sign, commas, spaces to get a clean number
+  const cleanedCharge = serviceCharge.replace(/[£,\s]/g, '');
+  const chargeNum = parseFloat(cleanedCharge);
+
+  if (isNaN(chargeNum)) return serviceCharge;
+
+  // If the value is small (< 100) it's likely a per-sqft rate — calculate annual total
+  if (chargeNum < 100 && propertySize && propertySize !== "N/A") {
+    const sizeNum = parseFloat(String(propertySize).replace(/[^0-9.]/g, ''));
+    if (!isNaN(sizeNum) && sizeNum > 0) {
+      const annualTotal = Math.round(chargeNum * sizeNum);
+      return `£${annualTotal.toLocaleString('en-GB')} per year`;
+    }
+  }
+
+  // Already a full annual amount — just reformat neatly
+  const fullAmount = Math.round(chargeNum);
+  return `£${fullAmount.toLocaleString('en-GB')} per year`;
+};
+
 /* -------------------- Components -------------------- */
 
 const InfoCard = ({ icon: Icon, title, value, desc }) => (
@@ -492,13 +563,23 @@ const Bar = ({ color, label, active }) => (
   </div>
 );
 
-const DocItem = ({ name, onClick }) => (
+const DocItem = ({ name, type, onClick }) => (
   <div
     onClick={onClick}
-    className="flex items-center gap-2 text-xs hover:bg-gray-100 p-1 rounded cursor-pointer"
+    className="flex items-center gap-3 p-2 bg-white rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-200 transition-colors"
   >
-    <div className="w-8 h-8 bg-gray-250 rounded flex items-center justify-center text-xs font-semibold">PDF</div>
-    {name}
+    <div className="w-9 h-9 bg-sidebar/10 rounded-lg flex items-center justify-center flex-shrink-0">
+      <svg className="w-5 h-5 text-sidebar" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-xs font-medium text-gray-800 truncate">{name}</p>
+      {type && <p className="text-xs text-gray-400 mt-0.5">{type}</p>}
+    </div>
+    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
   </div>
 );
 
