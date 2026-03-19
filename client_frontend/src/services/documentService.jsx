@@ -5,6 +5,13 @@ export const fetchDocuments = async () => {
   return response.data;
 };
 
+export const downloadDocument = async (fileId) => {
+  const response = await api.get(`/api/sheets/documents/download/${fileId}/`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
 export const uploadDocument = async (file, name, description, type) => {
   const formData = new FormData();
   formData.append("file", file);

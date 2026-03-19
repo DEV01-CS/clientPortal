@@ -565,6 +565,7 @@ def upload_document(request):
         file = request.FILES['file']
         name = request.POST.get('name', file.name)
         description = request.POST.get('description', '')
+        doc_type = request.POST.get('type', '')
         
         # Use ADMIN's Drive service instead of user's
         drive_service = get_admin_drive_service()
@@ -690,7 +691,7 @@ def upload_document(request):
             row_data = [
                 str(profile.client_id),
                 name,
-                '',  # type (can be set later)
+                doc_type,
                 property_location,
                 upload_date,
                 user_name,
