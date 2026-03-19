@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Home,
   TrendingUp,
-  ClipboardList,
   Coins,
   Users,
   Megaphone,
