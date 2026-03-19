@@ -26,8 +26,8 @@ import logoImage from "../logo.png";
 const menuTop = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
   { label: "My Trends", icon: TrendingUp, path: "/my-trends" },
-  { label: "Market Comparison", icon: ClipboardList, path: "/market-comparison" },
-  { label: "Market Influences", icon: Coins, path: "/market-influences" },
+  // Market Comparison hidden for later development
+  { label: "Building Influences", icon: Coins, path: "/market-influences" },
   { label: "My Lease", icon: Users, path: "/my-lease" },
   { label: "My Expert", icon: Megaphone, path: "/my-expert" },
 ];
