@@ -6,36 +6,51 @@ const NotificationContext = createContext();
 
 export const useNotifications = () => useContext(NotificationContext);
 
+export const NOTIFICATION_TYPES = {
+    BUDGET_RECEIVED: 'budget_received',
+    DEMAND_RECEIVED: 'demand_received',
+    YEAR_END_ACCOUNTS: 'year_end_accounts',
+    SECTION_20: 'section_20',
+    SECTION_20B: 'section_20b',
+    INDUSTRY_UPDATE: 'industry_update',
+    NEWS: 'news',
+    GENERAL: 'general',
+};
+
 export const NotificationProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [latestNotifications, setLatestNotifications] = useState([]);
+    const [allRecentNotifications, setAllRecentNotifications] = useState([]);
     const { isAuthenticated } = useAuth();
 
     const fetchUnread = useCallback(async () => {
         if (!isAuthenticated) {
             setUnreadCount(0);
             setLatestNotifications([]);
+            setAllRecentNotifications([]);
             return;
-        };
+        }
         try {
-            // Fetch only unread notifications
-            const response = await api.get('/api/notifications/?is_read=false');
-            setUnreadCount(response.data.length);
-            setLatestNotifications(response.data.slice(0, 5)); // Get latest 5 for a dropdown
+            const [unreadRes, allRes] = await Promise.all([
+                api.get('/api/notifications/?is_read=false'),
+                api.get('/api/notifications/'),
+            ]);
+            setUnreadCount(unreadRes.data.length);
+            setLatestNotifications(unreadRes.data.slice(0, 5));
+            setAllRecentNotifications(allRes.data.slice(0, 10));
         } catch (error) {
-            // Fail silently on poll error
-            console.error("Polling for notifications failed", error);
+            if (process.env.NODE_ENV === 'development') {
+                console.error("Polling for notifications failed", error);
+            }
         }
     }, [isAuthenticated]);
 
     useEffect(() => {
-        // Fetch immediately when auth status changes
         fetchUnread();
 
-        // Set up polling
         const interval = setInterval(() => {
             fetchUnread();
-        }, 30000); // Poll every 30 seconds
+        }, 30000);
 
         return () => clearInterval(interval);
     }, [isAuthenticated, fetchUnread]);
@@ -43,7 +58,8 @@ export const NotificationProvider = ({ children }) => {
     const value = {
         unreadCount,
         latestNotifications,
-        fetchUnread // Expose to allow manual refresh from other components
+        allRecentNotifications,
+        fetchUnread,
     };
 
     return (

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  BookOpen,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext"; 
@@ -29,6 +30,7 @@ const menuTop = [
   { label: "Building Influences", icon: Coins, path: "/market-influences" },
   { label: "My Lease", icon: Users, path: "/my-lease" },
   { label: "My Expert", icon: Megaphone, path: "/my-expert" },
+  { label: "Education", icon: BookOpen, path: "/education" },
 ];
 
 const menuBottom = [
@@ -140,7 +142,6 @@ const Sidebar = () => {
             isCollapsed={isCollapsed}
             isActive={location.pathname === item.path}
             onClick={() => handleNavigation(item.path)}
-            badgeCount={item.label === "Notifications" ? unreadCount : undefined}
           />
         ))}
 
@@ -153,6 +154,7 @@ const Sidebar = () => {
             isCollapsed={isCollapsed}
             isActive={location.pathname === item.path}
             onClick={() => handleNavigation(item.path)}
+            badgeCount={item.label === "Notifications" ? unreadCount : undefined}
           />
         ))}
 

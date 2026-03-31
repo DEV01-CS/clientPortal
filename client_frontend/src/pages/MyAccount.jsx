@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { checkAdminOAuthStatus, initiateAdminGoogleOAuth } from '../services/googleOAuthService';
-import { CheckCircle, Edit2, Save, X, Settings } from 'lucide-react';
+import { CheckCircle, Edit2, Save, X, Settings, CalendarCheck } from 'lucide-react';
 import api from '../api/api';
 
 // Admin email - only these user can see admin connection UI
@@ -368,7 +368,7 @@ const MyAccount = () => {
                             {[
                                 "Security",
                                 "Notifications",
-                                "Billing",
+                                "Subscription",
                                 "Data Export",
                                 "Preferences",
                             ].map((item) => (
@@ -380,6 +380,16 @@ const MyAccount = () => {
                                 </li>
                             ))}
                         </ul>
+
+                        {/* Annual Subscription Info */}
+                        <div className="mt-6 p-4 bg-white rounded-lg border border-gray-300">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CalendarCheck className="w-4 h-4 text-sidebar" />
+                                <span className="text-sm font-semibold text-gray-800">Annual Plan</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2">Your subscription renews annually.</p>
+                            <span className="inline-block px-2 py-0.5 bg-green-50 text-green-700 text-xs font-medium rounded-full">Active</span>
+                        </div>
 
                         <button className="mt-8 text-sm text-red-500 hover:underline">
                             Delete Account

@@ -7,16 +7,96 @@ import {
   Send,
   Home,
   ChevronDown,
+  ArrowRight,
+  Clock,
+  RefreshCw,
+  CalendarClock,
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
 import { sendChatbotMessage } from "../services/chatbotService";
 import { fetchDashboardData } from "../services/dashboardService";
 import { fetchDocuments } from "../services/documentService";
+import { getEducationArticles } from "../services/educationService";
 import LocationMap from "../components/LocationMap";
 import DocumentUploadModal from "../components/DocumentUploadModal";
-// Assuming a central API client setup for making authenticated requests
+import EducationCard from "../components/EducationCard";
+import RecentUpdatesWidget from "../components/RecentUpdatesWidget";
 import api from "../services/api";
+
+/* ── Deadline helpers ────────────────────────────────────── */
+const MONTH_MAP = {
+  january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+};
+
+/**
+ * Parse a UK date string into the next upcoming Date.
+ * Handles: "31st March", "31 March 2025", "31/03/2025", "1st January and 1st July"
+ * When multiple dates (separated by "and"), returns the soonest upcoming one.
+ */
+const parseNextDeadline = (raw) => {
+  if (!raw || raw === "N/A") return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const candidates = [];
+
+  // Split on "and" for multiple payment dates
+  const parts = raw.split(/\s+and\s+/i);
+
+  for (const part of parts) {
+    const str = part.trim();
+
+    // Format: dd/mm/yyyy or dd/mm
+    const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
+    if (slashMatch) {
+      const day = parseInt(slashMatch[1], 10);
+      const month = parseInt(slashMatch[2], 10) - 1;
+      const year = slashMatch[3] ? parseInt(slashMatch[3], 10) : today.getFullYear();
+      const d = new Date(year, month, day);
+      if (!slashMatch[3] && d < today) d.setFullYear(d.getFullYear() + 1);
+      candidates.push(d);
+      continue;
+    }
+
+    // Format: "31st March 2025" or "31st March" or "31 March"
+    const wordMatch = str.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)(?:\s+(\d{4}))?/);
+    if (wordMatch) {
+      const day = parseInt(wordMatch[1], 10);
+      const month = MONTH_MAP[wordMatch[2].toLowerCase()];
+      if (month !== undefined) {
+        const year = wordMatch[3] ? parseInt(wordMatch[3], 10) : today.getFullYear();
+        const d = new Date(year, month, day);
+        if (!wordMatch[3] && d < today) d.setFullYear(d.getFullYear() + 1);
+        candidates.push(d);
+      }
+    }
+  }
+
+  if (!candidates.length) return null;
+  // Return the soonest upcoming date
+  const upcoming = candidates
+    .filter((d) => d >= today)
+    .sort((a, b) => a - b);
+  return upcoming[0] || candidates.sort((a, b) => a - b)[0];
+};
+
+const daysUntil = (date) => {
+  if (!date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+};
+
+const deadlineChipStyle = (days) => {
+  if (days === null) return null;
+  if (days <= 14) return { bg: "bg-red-50 border-red-200 text-red-700", dot: "bg-red-400" };
+  if (days <= 30) return { bg: "bg-amber-50 border-amber-200 text-amber-700", dot: "bg-amber-400" };
+  return { bg: "bg-blue-50 border-blue-200 text-blue-700", dot: "bg-blue-400" };
+};
 
 const getField = (data, fieldVariations, defaultValue) => {
   if (!data) return defaultValue;
@@ -32,6 +112,8 @@ const getField = (data, fieldVariations, defaultValue) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { latestNotifications, allRecentNotifications } = useNotifications();
   const userName = user?.name || "N/A";
   const [messages, setMessages] = useState([
     {
@@ -41,6 +123,23 @@ const Dashboard = () => {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef(null);
+  const [educationArticles, setEducationArticles] = useState([]);
+  const [dataLastFetched, setDataLastFetched] = useState(null);
+  const [newSinceLastVisit, setNewSinceLastVisit] = useState(0);
+
+  useEffect(() => {
+    const loadEducation = async () => {
+      try {
+        const articles = await getEducationArticles();
+        setEducationArticles(articles.slice(0, 3));
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error loading education articles:", error);
+        }
+      }
+    };
+    loadEducation();
+  }, []);
 
   // Load documents
   const loadDocuments = useCallback(async () => {
@@ -150,12 +249,28 @@ const Dashboard = () => {
         // Keep default values on error
       } finally {
         setIsLoadingData(false);
+        setDataLastFetched(new Date());
       }
     };
 
     loadDashboardData();
     loadDocuments();
   }, [loadDocuments]);
+
+  // "New since last visit" — compare allRecentNotifications against stored timestamp
+  useEffect(() => {
+    if (!allRecentNotifications.length) return;
+    const lastVisitStr = localStorage.getItem('dashboard_last_visit');
+    const lastVisit = lastVisitStr ? new Date(lastVisitStr) : null;
+    if (lastVisit) {
+      const count = allRecentNotifications.filter(
+        (n) => new Date(n.created_at) > lastVisit
+      ).length;
+      setNewSinceLastVisit(count);
+    }
+    // Record this visit
+    localStorage.setItem('dashboard_last_visit', new Date().toISOString());
+  }, [allRecentNotifications]);
 
   
   const handleDocumentUploadSuccess = () => {
@@ -253,16 +368,66 @@ const Dashboard = () => {
     }
   }, [inputMessage]);
 
+  // Deadline chips — computed from already-loaded data, no extra API call
+  const deadlineChips = useMemo(() => {
+    const chips = [];
+
+    const paymentDate = parseNextDeadline(dashboardData.keydatePaymentDates);
+    const paymentDays = daysUntil(paymentDate);
+    if (paymentDays !== null && paymentDays <= 90) {
+      const style = deadlineChipStyle(paymentDays);
+      chips.push({
+        label: paymentDays === 0 ? "Payment due today" :
+               paymentDays === 1 ? "Payment due tomorrow" :
+               `Payment due in ${paymentDays} days`,
+        style,
+        icon: CalendarClock,
+      });
+    }
+
+    const yearEndDate = parseNextDeadline(dashboardData.keydateServiceChargeYearEnd);
+    const yearEndDays = daysUntil(yearEndDate);
+    if (yearEndDays !== null && yearEndDays <= 90) {
+      const style = deadlineChipStyle(yearEndDays);
+      chips.push({
+        label: yearEndDays === 0 ? "Service charge year ends today" :
+               yearEndDays === 1 ? "Service charge year ends tomorrow" :
+               `Service charge year ends in ${yearEndDays} days`,
+        style,
+        icon: Clock,
+      });
+    }
+
+    return chips;
+  }, [dashboardData.keydatePaymentDates, dashboardData.keydateServiceChargeYearEnd]);
+
   return (
     <div className="min-h-screen p-6 bg-white font-quicksand">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Hello,{" "}
-          <span className="text-sidebar">
-            {userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase()}
-          </span>
-        </h1>
+      <div className="flex flex-wrap items-center justify-between mb-3 gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Hello,{" "}
+            <span className="text-sidebar">
+              {userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase()}
+            </span>
+          </h1>
+          {/* Last updated timestamp */}
+          {dataLastFetched && (
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" />
+              Data updated {dataLastFetched.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+              {newSinceLastVisit > 0 && (
+                <button
+                  onClick={() => navigate("/notifications")}
+                  className="ml-2 px-2 py-0.5 bg-sidebar text-white rounded-full text-xs font-semibold hover:bg-teal-600 transition-colors"
+                >
+                  {newSinceLastVisit} new since last visit
+                </button>
+              )}
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -272,7 +437,7 @@ const Dashboard = () => {
             </div>
             <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-gray-200"></div>
           </div>
-          
+
           <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors">
             <Home className="w-4 h-4" />
             <span>My Properties</span>
@@ -280,6 +445,25 @@ const Dashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* Deadline chips — only shown when within 90 days */}
+      {!isLoadingData && deadlineChips.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {deadlineChips.map((chip, i) => {
+            const ChipIcon = chip.icon;
+            return (
+              <span
+                key={i}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${chip.style.bg}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${chip.style.dot}`} />
+                <ChipIcon className="w-3 h-3" />
+                {chip.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Top Info Cards */}
       {isLoadingData ? (
@@ -324,10 +508,11 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Middle Section - Ownership, Key Dates, and Score Bar */}
-      <div className="grid grid-cols-1  lg:grid-cols-4 gap-6 mb-6">
-        {/* LEFT COLUMN - Ownership and Key Dates */}
-        <div className="space-y-6">
+      {/* Middle Section - Ownership, Key Dates, Recent Updates | Score Bar + Map + Docs + Chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+
+        {/* LEFT COLUMN — Ownership, Key Dates, Recent Updates */}
+        <div className="space-y-4">
           <Card title="Ownership">
             <KeyValue label="Landlord" value={dashboardData.ownershipLandlord} />
             <KeyValue label="Leaseholder" value={dashboardData.ownershipLeaseholder} />
@@ -338,18 +523,23 @@ const Dashboard = () => {
           <Card title="Key Dates">
             <KeyValue label="Lease Term Remaining" value={dashboardData.keydateleaseTerm} />
             <KeyValue label="Service Charge Year End" value={dashboardData.keydateServiceChargeYearEnd} />
-            <KeyValue label="Payment Dates" value={formatPaymentDates(dashboardData.keydatePaymentDates)}/>
+            <KeyValue label="Payment Dates" value={formatPaymentDates(dashboardData.keydatePaymentDates)} />
           </Card>
 
-          {/* Document Upload Modal */}
+          {/* Recent Updates — integrated in left column, max 3 items */}
+          <RecentUpdatesWidget
+            notifications={allRecentNotifications.length > 0 ? allRecentNotifications : latestNotifications}
+            maxItems={3}
+          />
+
           <DocumentUploadModal
             isOpen={isDocumentModalOpen}
             onClose={() => setIsDocumentModalOpen(false)}
             onUploadSuccess={handleDocumentUploadSuccess}
           />
-        </div>  
+        </div>
 
-        {/* RIGHT COLUMN - Score Bar (spans 3 columns) */}
+        {/* RIGHT COLUMN — Score Bar, Map, Docs, Chat (spans 3 columns, unchanged) */}
         <div className="lg:col-span-3 rounded-lg shadow-sm">
           <div className="bg-gray-100 rounded-lg p-2 mb-6">
             <h3 className="font-semibold text-gray-900 m-2">
@@ -362,8 +552,7 @@ const Dashboard = () => {
               <Bar color="bg-yellow-400" label="MEDIUM" />
               <Bar color="bg-orange-500" label="HIGH" />
               <Bar color="bg-red-500" label="VERY HIGH" />
-              {/* Arrow indicator on the active bar */}
-              <div 
+              <div
                 className="absolute top-0 bottom-0 flex items-center justify-center pointer-events-none z-10 transition-all duration-500"
                 style={{ left: getScorePosition(dashboardData.scoreBar) }}
               >
@@ -474,11 +663,44 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
-
       </div>
 
-      {/* Bottom Section - Map, Docs, and Chat (below score bar) */}
+      {/* Education Teaser — 2 cards + "View All", no extra row overhead */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-gray-900">Education & Insights</h2>
+          <button
+            onClick={() => navigate("/education")}
+            className="flex items-center gap-1 text-sm font-medium text-sidebar hover:underline"
+          >
+            View All <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {educationArticles.slice(0, 2).map((article) => (
+            <EducationCard key={article.id} article={article} />
+          ))}
+        </div>
+      </div>
+
+      {/* Survey Shack — full-width horizontal promo banner */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-purple-600 to-purple-500 rounded-xl px-6 py-4 mb-2">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm">Survey Shack</p>
+            <p className="text-purple-100 text-xs">Big insights. Small price.</p>
+          </div>
+        </div>
+        <button className="flex items-center gap-2 px-5 py-2 bg-white text-purple-700 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors shadow-sm whitespace-nowrap flex-shrink-0">
+          Download
+        </button>
+      </div>
     </div>
   );
 };

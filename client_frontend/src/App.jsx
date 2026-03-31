@@ -16,6 +16,7 @@ import MyDocuments from "./pages/MyDocuments";
 import TestConnection from "./pages/TestConnection";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Education from "./pages/Education";
 import { NotificationProvider } from "./context/NotificationContext";
 const AppLayout = () => {
   const { isCollapsed } = useSidebar();
@@ -43,6 +44,7 @@ const AppLayout = () => {
             <Route path="/test-connection" element={<TestConnection />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/education" element={<Education />} />
           </Routes>
         </main>
       </div>

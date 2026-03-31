@@ -24,12 +24,31 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.utils import timezone
+from django.core.cache import cache
 from googleapiclient.errors import HttpError
 from django.contrib.auth.models import User
 import logging
 import traceback
+import hashlib
 
 logger = logging.getLogger(__name__)
+
+SHEET_CACHE_TTL = 120  # 2 minutes
+
+def _get_sheet_data_cached(sheet_name, range_str):
+    """Fetch sheet data with caching to avoid repeated Google API calls."""
+    cache_key = f"sheet_{settings.GOOGLE_SHEET_ID}_{sheet_name}_{hashlib.md5(range_str.encode()).hexdigest()}"
+    data = cache.get(cache_key)
+    if data is not None:
+        return data
+    service = get_admin_sheets_service()
+    result = service.spreadsheets().values().get(
+        spreadsheetId=settings.GOOGLE_SHEET_ID,
+        range=range_str
+    ).execute()
+    rows = result.get('values', [])
+    cache.set(cache_key, rows, SHEET_CACHE_TTL)
+    return rows
 
 # OAuth Endpoints
 # In-memory store for OAuth state to user_id mapping
@@ -98,13 +117,8 @@ def oauth_callback(request):
 def get_clients_documents_oauth(user, client_id, sheet_name='Documents'):
     """Get all documents for a specific client from Google Sheets using admin OAuth"""
     try:
-        service = get_admin_sheets_service()
-        result = service.spreadsheets().values().get(
-            spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range=f'{sheet_name}!A:Z'
-        ).execute()
-
-        rows = result.get('values', [])
+        range_str = f'{sheet_name}!A:Z'
+        rows = _get_sheet_data_cached(sheet_name, range_str)
         if not rows:
             # Return empty list if sheet is empty (no headers or data)
             return []
@@ -271,7 +285,12 @@ def client_dashboard(request):
     try:
         profile = UserProfile.objects.get(user=request.user)
         
-        # Use shared multi-step lookup function
+        # Check response-level cache first (keyed per user)
+        resp_cache_key = f"dashboard_resp_{request.user.id}_{profile.client_id}"
+        cached_resp = cache.get(resp_cache_key)
+        if cached_resp is not None:
+            return Response({"data": cached_resp}, status=status.HTTP_200_OK)
+        
         data = get_client_data_multi_step(request.user, profile, auto_sync_client_id=True)
 
         if not data:
@@ -303,6 +322,7 @@ def client_dashboard(request):
                 logger.warning(f"Failed to apply VR mapping: {str(e)}") 
                 #end VR mapping
 
+        cache.set(resp_cache_key, data, SHEET_CACHE_TTL)
         return Response({"data": data}, status=status.HTTP_200_OK)
     except AdminGoogleOAuthToken.DoesNotExist:
         return Response({
@@ -315,7 +335,6 @@ def client_dashboard(request):
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         error_str = str(e)
-        # Check if it's an admin OAuth error
         if 'Admin Google account not connected' in error_str:
             return Response({
                 "error": "Admin Google account not connected",
@@ -1456,16 +1475,8 @@ def get_vr_unit_mapping(user):
     Example: {"1"01": "Property Size", "1"02": "Service Charge"}
     """
     try:
-        service = get_admin_sheets_service()
-        sheet = service.spreadsheets()
-        
-        # Read VR sheet - Column C (header names) and Column D (unit codes)
-        result = sheet.values().get(
-            spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range='VR!C:D'
-        ).execute()
-        
-        rows = result.get('values', [])
+        range_str = 'VR!C:D'
+        rows = _get_sheet_data_cached('VR', range_str)
         if not rows:
             return {}
         
@@ -1503,16 +1514,8 @@ def get_ltp_data_with_mapped_headers(user, row_identifier, identifier_column='cl
         Dictionary with header names and their values
     """
     try:
-        service = get_admin_sheets_service()
-        sheet = service.spreadsheets()
-        
-        # Read entire sheet to get all rows
-        result = sheet.values().get(
-            spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range=f"'{sheet_name}'!A:ZZ"  # Read more columns to be safe
-        ).execute()
-        
-        rows = result.get('values', [])
+        range_str = f"'{sheet_name}'!A:ZZ"
+        rows = _get_sheet_data_cached(sheet_name, range_str)
         if not rows or len(rows) < 2:
             return None
         
@@ -1642,15 +1645,8 @@ def get_input_sheet_data(user, row_identifier, identifier_column='client_id', sh
         Dictionary with column names and values
     """
     try:
-        service = get_admin_sheets_service()
-        sheet = service.spreadsheets()
-        
-        result = sheet.values().get(
-            spreadsheetId=settings.GOOGLE_SHEET_ID,
-            range=f'{sheet_name}!A:Z'
-        ).execute()
-        
-        rows = result.get('values', [])
+        range_str = f'{sheet_name}!A:Z'
+        rows = _get_sheet_data_cached(sheet_name, range_str)
         if not rows:
             return None
         
